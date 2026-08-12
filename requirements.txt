@@ -1,5 +1,5 @@
 flask
 edge-tts
 pydub
-pyaudioop
+audioop-lts
 gunicorn
