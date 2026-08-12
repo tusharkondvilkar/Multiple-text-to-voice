@@ -1,17 +1,18 @@
 import sys
+import os
 
-# SAFETY PATCH: Fix for Python 3.13+ missing audioop
+# --- PATCH FOR NEWER PYTHON VERSIONS ---
 try:
     import audioop
 except ImportError:
     try:
-        from pyaudioop import audioop
+        import audioop_lts as audioop
         sys.modules['audioop'] = audioop
     except ImportError:
-        print("Warning: audioop not found. WAV conversion might fail.")
+        print("WAV conversion may be limited on this Python version.")
+# ---------------------------------------
 
 import asyncio
-import os
 import uuid
 from flask import Flask, render_template, request, jsonify
 import edge_tts
@@ -23,7 +24,7 @@ app = Flask(__name__)
 STATIC_AUDIO = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'audio')
 os.makedirs(STATIC_AUDIO, exist_ok=True)
 
-# Pre-defined voices (You can add the full list from your original script here)
+# Expanded Voice List
 VOICE_DATA = [
     ("en-IN-NeerjaNeural", "India", "Female"),
     ("en-IN-PrabhatNeural", "India", "Male"),
@@ -57,25 +58,19 @@ async def generate():
     unique_id = str(uuid.uuid4())
     mp3_path = os.path.join(STATIC_AUDIO, f"{unique_id}.mp3")
 
-    # Adding custom delay logic
-    # We add the delay by inserting silences between paragraphs using pydub after generation
+    # Basic Generation
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(mp3_path)
 
     results = {"mp3": f"/static/audio/{unique_id}.mp3"}
 
-    # Handle WAV conversion and Custom Gaps
-    if 'wav' in formats or delay > 0:
+    # WAV Conversion
+    if 'wav' in formats:
         try:
             audio = AudioSegment.from_mp3(mp3_path)
-            
-            # If user wants a gap between paragraphs, we'd normally split text, 
-            # generate pieces, and join with: AudioSegment.silent(duration=delay*1000)
-            # For now, we provide the conversion:
-            if 'wav' in formats:
-                wav_filename = f"{unique_id}.wav"
-                audio.export(os.path.join(STATIC_AUDIO, wav_filename), format="wav")
-                results["wav"] = f"/static/audio/{wav_filename}"
+            wav_filename = f"{unique_id}.wav"
+            audio.export(os.path.join(STATIC_AUDIO, wav_filename), format="wav")
+            results["wav"] = f"/static/audio/{wav_filename}"
         except Exception as e:
             print(f"Conversion Error: {e}")
 
