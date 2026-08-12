@@ -1,4 +1,5 @@
 flask
 edge-tts
 pydub
+pyaudioop
 gunicorn
