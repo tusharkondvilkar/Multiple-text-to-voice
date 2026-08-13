@@ -91,7 +91,7 @@
         }
     </style>
 
-    <!-- FOOLPROOF INDEPENDENT COUNTER SCRIPT (Runs instantly without waiting) -->
+    <!-- REAL-TIME WORD & CHAR COUNTER SCRIPT -->
     <script>
         function updateCounts() {
             var textarea = document.getElementById('textInput');
@@ -111,7 +111,6 @@
             wordSpan.innerText = words;
         }
 
-        // Attach listeners immediately when window/DOM is ready
         window.addEventListener('DOMContentLoaded', function() {
             var textarea = document.getElementById('textInput');
             if (textarea) {
@@ -120,7 +119,7 @@
                 textarea.addEventListener('paste', updateCounts);
                 textarea.addEventListener('change', updateCounts);
             }
-            updateCounts(); // Run initial calculation
+            updateCounts();
         });
     </script>
 </head>
@@ -130,30 +129,29 @@
     <a href="#" class="logo-link"><img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="28" alt="HRMantra Logo"></a>
     
     <div class="selector-box">
-    <p class="selector-label">1. Country</p>
-    <select id="countrySelect" class="form-select" onchange="updateVoices()">
-        {# Define priority order #}
-        {% set priority_countries = ["India", "United States", "United Kingdom", "United Arab Emirates"] %}
-        
-        {# 1. Render Priority Countries First (Pre-select India) #}
-        {% for country in priority_countries %}
-            {% if country in voice_map %}
-            <option value="{{ country }}" {% if country == 'India' %}selected{% endif %}>
-                {{ country }}
-            </option>
-            {% endif %}
-        {% endfor %}
+        <p class="selector-label">1. Country</p>
+        <select id="countrySelect" class="form-select" onchange="updateVoices()">
+            {% set priority_countries = ["India", "United States", "United Kingdom", "United Arab Emirates"] %}
+            
+            <!-- Render priority countries first -->
+            {% for country in priority_countries %}
+                {% if country in voice_map %}
+                <option value="{{ country }}" {% if country == 'India' %}selected{% endif %}>
+                    {{ country }}
+                </option>
+                {% endif %}
+            {% endfor %}
 
-        <option disabled>──────────</option>
+            <option disabled>──────────</option>
 
-        {# 2. Render Remaining Countries Alphabetically #}
-        {% for country in voice_map.keys()|sort %}
-            {% if country not in priority_countries %}
-            <option value="{{ country }}">{{ country }}</option>
-            {% endif %}
-        {% endfor %}
-    </select>
-</div>
+            <!-- Render all remaining countries alphabetically -->
+            {% for country in voice_map.keys()|sort %}
+                {% if country not in priority_countries %}
+                <option value="{{ country }}">{{ country }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
     
     <div class="selector-box" style="flex: 1.5; max-width: 250px;">
         <p class="selector-label">2. Voice</p>
@@ -188,7 +186,6 @@
                 <h5 class="fw-bold mb-0">AI Audio Studio</h5>
                 <p class="text-muted small mb-0">Neural speech generator.</p>
             </div>
-            <!-- REAL-TIME WORKING COUNTER -->
             <div class="count-display">
                 <span id="charCount">0</span> chars | <span id="wordCount">0</span> words
             </div>
@@ -206,7 +203,7 @@
                 <button class="pause-btn" onclick="insertTag('1.0')">1.0</button>
                 <button class="pause-btn" onclick="insertTag('2.0')">2.0</button>
                 <button class="pause-btn" onclick="insertTag('5.0')">5.0</button>
-                <p>To add Custom Pause Change the value of <#0.5#> to desired timing like <#20.0#> </p>
+                <p class="mb-0 ms-2 small text-muted">To add Custom Pause, change the value inside <code>&lt;#0.5#&gt;</code> to your desired duration like <code>&lt;#20.0#&gt;</code>.</p>
             </div>
             <div class="action-buttons-group">
                 <button class="btn-action btn-play" id="playBtn" onclick="generate(true)">▶ GENERATE & PLAY</button>
@@ -252,9 +249,7 @@
     </div>
 </div>
 
-<!-- AUDIO GENERATION SCRIPT WITH JINJA SAFE FALLBACK -->
 <script>
-    // Safe evaluation to prevent JS syntax error if opened standalone
     let voiceMap = {};
     try {
         voiceMap = {{ voice_map | tojson }} || {};
@@ -270,21 +265,21 @@
     let timerInterval = null;
     let startTime = 0;
 
-   document.addEventListener("DOMContentLoaded", function() {
-    document.getElementById('textInput').addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
-            generate(true);
-        }
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('textInput').addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                generate(true);
+            }
+        });
+
+        audioPlayer.addEventListener('play', updatePlayerButtonState);
+        audioPlayer.addEventListener('pause', updatePlayerButtonState);
+        audioPlayer.addEventListener('ended', resetPlayerButtonState);
+
+        // Auto-load voices for pre-selected country (India) on startup
+        updateVoices();
     });
-
-    audioPlayer.addEventListener('play', updatePlayerButtonState);
-    audioPlayer.addEventListener('pause', updatePlayerButtonState);
-    audioPlayer.addEventListener('ended', resetPlayerButtonState);
-
-    // Initialize the voices dropdown for the pre-selected country (India)
-    updateVoices();
-});
 
     function startTimeline() {
         document.getElementById('timelineWrapper').classList.add('show');
