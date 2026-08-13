@@ -3,49 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Audio Studio | HRMantra</title>
+    <title>Compact AI Audio Studio | HRMantra</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root { --hrm-blue: #003366; --accent: #5c67f2; }
-        body { background: #f8fafc; font-family: 'Inter', sans-serif; margin: 0; }
-        .top-nav { background: white; padding: 10px 40px; border-bottom: 1px solid #e1e5eb; }
-        .controls-header { background: white; padding: 20px 40px; border-bottom: 1px solid #e1e5eb; display: flex; gap: 15px; justify-content: center; }
+        :root { --hrm-blue: #003366; --hrm-text: #1e293b; --accent: #5c67f2; --border: #e2e8f0; }
+        body { background: #f1f5f9; font-family: 'Inter', sans-serif; color: var(--hrm-text); }
         
-        .selector-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 15px; background: white; min-width: 150px; }
-        .selector-label { font-size: 0.65rem; font-weight: 800; color: #718096; text-transform: uppercase; margin-bottom: 2px; }
-        .form-select { border: none; font-weight: 700; color: var(--hrm-blue); padding: 0; font-size: 0.9rem; }
-        .form-select:focus { box-shadow: none; }
+        /* Layout Compression */
+        .header-controls-group {
+            background: white;
+            padding: 8px 15px; /* Reduced from 20px */
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            position: sticky; top: 0; z-index: 1000;
+        }
 
-        .editor-card { background: white; border-radius: 25px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); max-width: 1100px; margin: 40px auto; }
-        .text-area-wrapper { border: 2px solid #e2e8f0; border-radius: 20px; margin-bottom: 20px; transition: 0.3s; }
+        .selector-box { border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; background: white; flex: 1; max-width: 200px; }
+        .selector-label { font-size: 0.65rem; font-weight: 800; color: #718096; text-transform: uppercase; margin-bottom: 0px; margin-top: -2px; line-height: 1; }
+        .form-select, .voice-search-input { border: none; font-weight: 700; color: var(--hrm-blue); padding: 0; font-size: 0.88rem; width: 100%;}
+        .form-select:focus, .voice-search-input:focus { box-shadow: none; outline: none; }
+        .voice-search-input { font-weight: 400; color: #718096; font-size: 0.8rem; border-bottom: 1px solid var(--border); margin-bottom: 4px; display: none;}
+        .voice-search-input.show { display: block; }
+
+        .app-container { max-width: 1300px; margin: 0 auto; padding: 20px; }
+        
+        /* Editor Card */
+        .editor-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        
+        /* Title row and counts */
+        .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px;}
+        .count-display { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
+
+        /* Text Area */
+        .text-area-wrapper { border: 2px solid var(--border); border-radius: 12px; position: relative; margin-bottom: 15px; }
         .text-area-wrapper:focus-within { border-color: var(--accent); }
-        #textInput { width: 100%; border: none; padding: 25px; min-height: 300px; font-size: 1.05rem; line-height: 1.7; resize: none; outline: none; border-radius: 20px; }
+        #textInput { width: 100%; border: none; padding: 15px; min-height: 160px; font-size: 1rem; line-height: 1.6; resize: vertical; outline: none; border-radius: 12px; }
+        .shortcut-tip { position: absolute; bottom: 8px; right: 12px; font-size: 0.7rem; color: #cbd5e1; pointer-events: none; }
 
-        .btn-action { font-weight: 700; border-radius: 12px; padding: 12px 25px; border: none; }
-        .btn-play { background: #f1f5f9; color: var(--hrm-blue); margin-right: 10px; }
+        /* Actions */
+        .btn-action { font-weight: 700; border-radius: 10px; padding: 10px 20px; border: none; font-size: 0.9rem;}
+        .btn-play { background: #e2e8f0; color: var(--hrm-blue); }
+        .btn-play:hover { background: #cbd5e1; }
         .btn-download { background: var(--hrm-blue); color: white; }
-        .pause-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; padding: 6px 15px; font-weight: 700; font-size: 0.85rem; margin-right: 8px; }
-        .player-section { display: none; margin-top: 28px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; }
+        .btn-download:hover { opacity: 0.9; }
+
+        .pause-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;}
+        .pause-btn { border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: 4px 10px; font-weight: 700; font-size: 0.75rem; color: var(--hrm-blue); }
+        .pause-btn:hover { background: #f1f5f9; }
+
+        /* Player Section */
+        .player-section { display: none; margin-top: 20px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: #f8fafc; }
         .player-section.show { display: block; }
-        .player-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-        .player-btn { border: none; border-radius: 10px; padding: 10px 18px; font-weight: 700; }
-        .player-play { background: var(--hrm-blue); color: white; }
-        .player-stop { background: #e2e8f0; color: #1e293b; }
-        .player-download { background: #fff; color: var(--hrm-blue); border: 1px solid var(--hrm-blue); }
-        #audioPlayer { width: 100%; margin-bottom: 16px; }
+        #audioPlayer { width: 100%; margin-bottom: 12px; height: 35px;}
+
+        /* Player Smart Button */
+        .player-controls { display: flex; gap: 10px; align-items: center; }
+        .player-btn { border: none; border-radius: 8px; padding: 8px 16px; font-weight: 700; font-size: 0.85rem; }
+        
+        /* Single toggle button */
+        .player-toggle-play { background: var(--hrm-blue); color: white; min-width: 110px; } 
+        .player-toggle-play.playing { background: #f59e0b; /* Orange for pause */ }
+
+        .player-stop { background: #e2e8f0; color: var(--hrm-text); }
+        .player-download-secondary { background: #fff; color: var(--hrm-blue); border: 1px solid var(--hrm-blue); }
+
+        @media (max-width: 992px) {
+            .header-controls-group { flex-wrap: wrap; padding: 10px; }
+            .selector-box { max-width: none; flex: 1 1 calc(50% - 12px); }
+            .logo-link { width: 100%; text-align: center; margin-bottom: 5px;}
+        }
         @media (max-width: 768px) {
-            .controls-header { flex-wrap: wrap; padding: 16px; }
-            .editor-card { margin: 20px 12px; padding: 24px; }
-            .editor-actions { align-items: flex-start !important; flex-direction: column; gap: 18px; }
+            .app-container { padding: 10px; }
+            .editor-card { padding: 15px; }
+            #textInput { min-height: 120px; font-size: 0.95rem; }
+            .editor-actions { flex-direction: column; align-items: flex-start !important; gap: 15px; }
+            .action-buttons-group { width: 100%; display: flex; gap: 8px; }
+            .action-buttons-group .btn-action { flex: 1; padding: 10px 10px; font-size: 0.8rem;}
+            .player-controls { flex-wrap: wrap; }
         }
     </style>
 </head>
 <body>
 
-<div class="top-nav"><img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="35"></div>
-
-<div class="controls-header">
+<!-- COMPRESSED HEADER: Logo and Controls in one row -->
+<div class="header-controls-group">
+    <a href="#" class="logo-link"><img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="28" alt="HRMantra Logo"></a>
+    
     <div class="selector-box">
         <p class="selector-label">1. Country</p>
         <select id="countrySelect" class="form-select" onchange="updateVoices()">
@@ -55,72 +102,149 @@
             {% endfor %}
         </select>
     </div>
-    <div class="selector-box">
+    
+    <div class="selector-box" style="flex: 1.5; max-width: 250px;">
         <p class="selector-label">2. Voice</p>
+        <input type="text" id="voiceSearch" class="voice-search-input" placeholder="Search voices..." onkeyup="filterVoices()">
         <select id="voiceSelect" class="form-select" disabled><option>Choose Country first</option></select>
     </div>
+    
     <div class="selector-box">
         <p class="selector-label">3. Speed</p>
         <select id="speedSelect" class="form-select">
             <option value="1.0">1.0x (Normal)</option>
             <option value="1.1">1.1x (Fast)</option>
+            <option value="1.2">1.2x</option>
             <option value="0.9">0.9x (Slow)</option>
+            <option value="0.8">0.8x</option>
         </select>
     </div>
+    
     <div class="selector-box">
         <p class="selector-label">4. Format</p>
-        <select id="formatSelect" class="form-select"><option value="mp3">MP3</option><option value="wav">WAV</option></select>
+        <select id="formatSelect" class="form-select">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
+        </select>
     </div>
 </div>
 
-<div class="editor-card">
-    <h4 class="fw-bold mb-1">AI Audio Studio</h4>
-    <p class="text-muted mb-4">Transform your words into natural neural speech.</p>
-
-    <div class="text-area-wrapper">
-        <textarea id="textInput" placeholder="Enter text...">If you think of a paragraph as a sandwich, <#0.5#>the supporting sentences are the filling between the bread.</textarea>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center editor-actions">
-        <div>
-            <span class="small fw-bold text-muted me-2">Add pause</span>
-            <button class="pause-btn" onclick="insertTag('0.5')">0.5s</button>
-            <button class="pause-btn" onclick="insertTag('1.0')">1.0s</button>
-            <button class="pause-btn" onclick="insertTag('2.0')">2.0s</button>
-            <button class="pause-btn" onclick="insertTag('2.5')">2.5s</button>
-            <button class="pause-btn" onclick="insertTag('3.0')">3.0s</button>
-            <button class="pause-btn" onclick="insertTag('5.0')">5.0s</button>
-            <button class="pause-btn" onclick="insertTag('15.0')">15.0s</button>
-            
+<div class="app-container">
+    <div class="editor-card">
+        <div class="title-row">
+            <div>
+                <h5 class="fw-bold mb-0">AI Audio Studio</h5>
+                <p class="text-muted small mb-0">Neural speech generator.</p>
+            </div>
+            <!-- SMART FEATURE: Live Counts -->
+            <div class="count-display">
+                <span id="charCount">0</span> chars | <span id="wordCount">0</span> words
+            </div>
         </div>
-        <div>
-            <button class="btn-action btn-play" id="playBtn" onclick="generate(true)">▶ GENERATE & PLAY</button>
-            <button class="btn-action btn-download" id="genBtn" onclick="generate(false)">↓ GENERATE & DOWNLOAD</button>
-        </div>
-    </div>
 
-    <div class="player-section" id="playerSection">
-        <h6 class="fw-bold mb-3">Generated Audio Player</h6>
-        <audio id="audioPlayer" controls preload="metadata"></audio>
-        <div class="player-controls">
-            <button class="player-btn player-play" type="button" onclick="playGeneratedAudio()">▶ PLAY</button>
-            <button class="player-btn player-stop" type="button" onclick="stopGeneratedAudio()">■ STOP</button>
-            <button class="player-btn player-download" type="button" onclick="downloadGeneratedAudio()">↓ DOWNLOAD</button>
+        <div class="text-area-wrapper">
+            <textarea id="textInput" placeholder="Enter text here... Use 'Add pause' buttons to insert silence.">Welcome to HRMantra AI Audio Studio. If you think of a paragraph as a sandwich, <#0.5#> the supporting sentences are the filling between the bread.</textarea>
+            <!-- SMART FEATURE: Keyboard Shortcut Hint -->
+            <div class="shortcut-tip">Ctrl+Enter to Play</div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center editor-actions">
+            <div class="pause-tags">
+                <span class="small fw-bold text-muted me-1">Add pause (s):</span>
+                <button class="pause-btn" onclick="insertTag('0.5')">0.5</button>
+                <button class="pause-btn" onclick="insertTag('1.0')">1.0</button>
+                <button class="pause-btn" onclick="insertTag('2.0')">2.0</button>
+                <button class="pause-btn" onclick="insertTag('3.0')">3.0</button>
+                <button class="pause-btn" onclick="insertTag('5.0')">5.0</button>
+                <button class="pause-btn" onclick="insertTag('10.0')">10.0</button>
+            </div>
+            <div class="action-buttons-group">
+                <button class="btn-action btn-play" id="playBtn" onclick="generate(true)">▶ GENERATE & PLAY</button>
+                <button class="btn-action btn-download" id="genBtn" onclick="generate(false)">↓ GENERATE & DOWNLOAD</button>
+            </div>
+        </div>
+
+        <div class="player-section" id="playerSection">
+            <h6 class="fw-bold mb-2">Generated Audio</h6>
+            <audio id="audioPlayer" controls preload="metadata"></audio>
+            <div class="player-controls">
+                <!-- SMART FEATURE: State-aware Play/Pause button -->
+                <button class="player-btn player-toggle-play" id="playerToggleBtn" type="button" onclick="togglePlayPause()">▶ PLAY</button>
+                <button class="player-btn player-stop" type="button" onclick="stopGeneratedAudio()">■ STOP</button>
+                <button class="player-btn player-download-secondary" type="button" onclick="downloadGeneratedAudio()">↓ DOWNLOAD</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    const voiceMap = {{ voice_map | tojson }};
+    // Assuming voiceMap is passed from Flask/Jinja2
+    const voiceMap = {{ voice_map | tojson }}; 
     let generatedAudioUrl = '';
     let generatedAudioFilename = 'HRMantra_Audio.mp3';
+    const audioPlayer = document.getElementById('audioPlayer');
+    const playerToggleBtn = document.getElementById('playerToggleBtn');
+
+    // --- Core initialization ---
+    window.onload = function() {
+        updateCounts(); // Initialize counts
+        // Handle keyboard shortcut (Ctrl+Enter)
+        document.getElementById('textInput').addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                generate(true);
+            }
+        });
+        // Handle standard live count update
+        document.getElementById('textInput').addEventListener('input', updateCounts);
+        
+        // Setup audio player event listeners for smart button
+        audioPlayer.addEventListener('play', updatePlayerButtonState);
+        audioPlayer.addEventListener('pause', updatePlayerButtonState);
+        audioPlayer.addEventListener('ended', resetPlayerButtonState);
+    };
+
+    // --- SMART FEATURE: Live Counts ---
+    function updateCounts() {
+        const text = document.getElementById('textInput').value;
+        const charCount = text.length;
+        // Simple word count, removing empty strings from split
+        const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+        
+        document.getElementById('charCount').textContent = charCount;
+        document.getElementById('wordCount').textContent = wordCount;
+    }
+
+    // --- SMART FEATURE: Voice Search ---
+    function filterVoices() {
+        const searchInput = document.getElementById('voiceSearch');
+        const filter = searchInput.value.toLowerCase();
+        const vSelect = document.getElementById('voiceSelect');
+        const options = vSelect.options;
+
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            const txt = opt.textContent || opt.innerText;
+            if (txt.toLowerCase().indexOf(filter) > -1) {
+                opt.style.display = "";
+            } else {
+                opt.style.display = "none";
+            }
+        }
+    }
 
     function updateVoices() {
         const country = document.getElementById('countrySelect').value;
         const vSelect = document.getElementById('voiceSelect');
+        const vSearch = document.getElementById('voiceSearch');
+        
         vSelect.innerHTML = '';
+        vSearch.value = ''; // Clear search on country change
+
         if (country && voiceMap[country]) {
             vSelect.disabled = false;
+            vSearch.classList.add('show'); // Show search input
+
             voiceMap[country].forEach(v => {
                 const opt = document.createElement('option');
                 opt.value = v.id;
@@ -129,6 +253,7 @@
             });
         } else {
             vSelect.disabled = true;
+            vSearch.classList.remove('show'); // Hide search input
             vSelect.innerHTML = '<option>Choose Country first</option>';
         }
     }
@@ -140,10 +265,12 @@
         textarea.value = textarea.value.substring(0, start) + tag + textarea.value.substring(textarea.selectionEnd);
         textarea.focus();
         textarea.setSelectionRange(start + tag.length, start + tag.length);
+        updateCounts(); // Update counts after insertion
     }
 
+    // --- SMART FEATURE: Smart Player Button Logic ---
+
     function showGeneratedPlayer(url, filename) {
-        const audioPlayer = document.getElementById('audioPlayer');
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
         generatedAudioUrl = url;
@@ -151,17 +278,38 @@
         audioPlayer.src = url;
         audioPlayer.load();
         document.getElementById('playerSection').classList.add('show');
+        resetPlayerButtonState(); // Ensure it starts as PLAY
     }
 
-    async function playGeneratedAudio() {
+    function updatePlayerButtonState() {
+        if (!audioPlayer.paused) {
+            playerToggleBtn.innerHTML = '❚❚ PAUSE';
+            playerToggleBtn.classList.add('playing');
+        } else {
+            playerToggleBtn.innerHTML = '▶ PLAY';
+            playerToggleBtn.classList.remove('playing');
+        }
+    }
+
+    function resetPlayerButtonState() {
+        playerToggleBtn.innerHTML = '▶ PLAY';
+        playerToggleBtn.classList.remove('playing');
+    }
+
+    async function togglePlayPause() {
         if (!generatedAudioUrl) return alert('Please generate audio first.');
-        await document.getElementById('audioPlayer').play();
+        
+        if (audioPlayer.paused) {
+            await audioPlayer.play();
+        } else {
+            audioPlayer.pause();
+        }
     }
 
     function stopGeneratedAudio() {
-        const audioPlayer = document.getElementById('audioPlayer');
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
+        resetPlayerButtonState();
     }
 
     function downloadGeneratedAudio() {
@@ -174,6 +322,7 @@
         link.remove();
     }
 
+    // --- Generation Logic ---
     async function generate(isPlayOnly) {
         const text = document.getElementById('textInput').value;
         const voice = document.getElementById('voiceSelect').value;
@@ -185,8 +334,12 @@
         if(!voice || voice.includes("Choose")) return alert("Please select a voice!");
         if(!text.trim()) return alert("Please enter text to generate audio.");
 
+        // Visual feedback
         genBtn.disabled = true;
         playBtn.disabled = true;
+        genBtn.innerHTML = "Generating...";
+        playBtn.innerHTML = "Generating...";
+
         try {
             const res = await fetch('/generate', {
                 method: 'POST',
@@ -195,7 +348,7 @@
             });
             const contentType = res.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) {
-                throw new Error(`Server returned ${res.status}. Please check the Render logs.`);
+                throw new Error(`Server returned ${res.status}. Check Render logs.`);
             }
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `Server returned ${res.status}.`);
@@ -203,7 +356,7 @@
             if(data.url) {
                 showGeneratedPlayer(data.url, data.filename || `HRMantra_Audio.${format}`);
                 if(isPlayOnly) {
-                    await playGeneratedAudio();
+                    await audioPlayer.play(); // This will trigger updatePlayerButtonState()
                 } else {
                     downloadGeneratedAudio();
                 }
@@ -213,8 +366,11 @@
         } catch (e) {
             alert(e.message || "Connection error. Please try again.");
         } finally {
+            // Restore buttons
             genBtn.disabled = false;
             playBtn.disabled = false;
+            genBtn.innerHTML = "↓ GENERATE & DOWNLOAD";
+            playBtn.innerHTML = "▶ GENERATE & PLAY";
         }
     }
 </script>
