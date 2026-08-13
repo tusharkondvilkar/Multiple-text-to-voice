@@ -14,14 +14,16 @@ from flask import Flask, jsonify, render_template, request, send_from_directory,
 
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # Increased upload limit
 
 AUDIO_DIR = Path(os.getenv("AUDIO_OUTPUT_DIR", "/tmp/hrmantra-audio"))
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
-MAX_TEXT_LENGTH = 10_000
-MAX_PAUSE_SECONDS = 60.0  # Increased limit to allow longer custom pauses
-FILE_TTL_SECONDS = 60 * 60
+# Extended Character Limit & Session/File TTL
+MAX_TEXT_LENGTH = 50_000        # Supports up to 50,000 characters per conversion
+MAX_PAUSE_SECONDS = 60.0       # Supports pauses up to 60 seconds
+FILE_TTL_SECONDS = 24 * 60 * 60 # Extended file retention to 24 hours (86,400s)
+
 PAUSE_PATTERN = re.compile(r"<#\s*(\d+(?:\.\d+)?)\s*#>")
 
 VOICE_DATA = [
@@ -341,22 +343,47 @@ def parse_segments(text: str):
     return segments
 
 
-async def text_to_pcm(text: str, voice: str, rate: str) -> bytes:
-    """Generate speech in memory and decode it to consistent mono PCM."""
+def split_text_into_chunks(text: str, max_chunk_size: int = 2000):
+    """Splits text into sub-chunks of max 2000 chars on sentence boundaries to prevent TTS streaming timeouts."""
+    if len(text) <= max_chunk_size:
+        return [text]
+
+    chunks = []
+    # Split on sentence endings
+    sentences = re.split(r'(?<=[.!?\n])\s+', text)
+    current_chunk = []
+    current_len = 0
+
+    for sentence in sentences:
+        if current_len + len(sentence) > max_chunk_size and current_chunk:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = []
+            current_len = 0
+        current_chunk.append(sentence)
+        current_len += len(sentence)
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+
+    return chunks
+
+
+async def text_chunk_to_pcm(text: str, voice: str, rate: str) -> bytes:
+    """Streams a single text chunk from edge-tts and converts to mono PCM."""
     mp3_data = bytearray()
     communicate = edge_tts.Communicate(
         text=text,
         voice=voice,
         rate=rate,
-        connect_timeout=15,
-        receive_timeout=90,
+        connect_timeout=20,
+        receive_timeout=120,
     )
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             mp3_data.extend(chunk["data"])
 
     if not mp3_data:
-        raise RuntimeError("The speech provider returned no audio.")
+        raise RuntimeError("The speech provider returned no audio for chunk.")
 
     decoded = miniaudio.decode(
         bytes(mp3_data),
@@ -365,6 +392,28 @@ async def text_to_pcm(text: str, voice: str, rate: str) -> bytes:
         sample_rate=24_000,
     )
     return decoded.samples.tobytes()
+
+
+async def text_to_pcm(text: str, voice: str, rate: str) -> bytes:
+    """Handles chunking of large texts to prevent timeouts during synthesis."""
+    chunks = split_text_into_chunks(text, max_chunk_size=2000)
+    pcm_chunks = []
+    
+    for chunk in chunks:
+        if not chunk.strip():
+            continue
+        # Retries for reliability on network hiccups
+        for attempt in range(3):
+            try:
+                pcm_data = await text_chunk_to_pcm(chunk, voice, rate)
+                pcm_chunks.append(pcm_data)
+                break
+            except Exception as e:
+                if attempt == 2:
+                    raise e
+                await asyncio.sleep(1)
+
+    return b"".join(pcm_chunks)
 
 
 async def build_pcm(segments, voice: str, rate: str) -> bytes:
