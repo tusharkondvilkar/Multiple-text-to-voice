@@ -270,18 +270,21 @@
     let timerInterval = null;
     let startTime = 0;
 
-    document.addEventListener("DOMContentLoaded", function() {
-        document.getElementById('textInput').addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                generate(true);
-            }
-        });
-
-        audioPlayer.addEventListener('play', updatePlayerButtonState);
-        audioPlayer.addEventListener('pause', updatePlayerButtonState);
-        audioPlayer.addEventListener('ended', resetPlayerButtonState);
+   document.addEventListener("DOMContentLoaded", function() {
+    document.getElementById('textInput').addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            generate(true);
+        }
     });
+
+    audioPlayer.addEventListener('play', updatePlayerButtonState);
+    audioPlayer.addEventListener('pause', updatePlayerButtonState);
+    audioPlayer.addEventListener('ended', resetPlayerButtonState);
+
+    // Initialize the voices dropdown for the pre-selected country (India)
+    updateVoices();
+});
 
     function startTimeline() {
         document.getElementById('timelineWrapper').classList.add('show');
