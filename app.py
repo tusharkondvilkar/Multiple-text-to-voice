@@ -2,19 +2,17 @@ import os
 import asyncio
 import uuid
 import re
-import sys
-import html
-from flask import Flask, render_template, request, jsonify
+import tempfile
+from flask import Flask, render_template, request, jsonify, send_file
 import edge_tts
 
 app = Flask(__name__)
 
-# Directory Management
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_AUDIO = os.path.join(BASE_DIR, 'static', 'audio')
-os.makedirs(STATIC_AUDIO, exist_ok=True)
+# Use system /tmp directory to avoid Render git-repo file conflicts
+AUDIO_STORAGE_DIR = os.path.join(tempfile.gettempdir(), 'hrmantra_audio_storage')
+os.makedirs(AUDIO_STORAGE_DIR, exist_ok=True)
 
-# FULL VOICE DATABASE (110+ Countries)
+# FULL VOICE DATABASE (110+ Countries & Voices)
 VOICE_DATA = [
     ("af-ZA-AdriNeural", "South Africa", "Female"), ("af-ZA-WillemNeural", "South Africa", "Male"),
     ("sq-AL-AnilaNeural", "Albania", "Female"), ("sq-AL-IlirNeural", "Albania", "Male"),
@@ -66,65 +64,122 @@ VOICE_DATA = [
     ("en-SG-WayneNeural", "Singapore", "Male"), ("en-TZ-ElimuNeural", "Tanzania", "Male"),
     ("en-TZ-ImaniNeural", "Tanzania", "Female"), ("en-GB-SoniaNeural", "United Kingdom", "Female"),
     ("en-GB-ThomasNeural", "United Kingdom", "Male"), ("en-US-AvaNeural", "United States", "Female"),
-    ("en-US-AndrewNeural", "United States", "Male"), ("fi-FI-HarriNeural", "Finland", "Male"),
+    ("en-US-AndrewNeural", "United States", "Male"), ("en-US-EmmaNeural", "United States", "Female"),
+    ("en-US-BrianNeural", "United States", "Male"), ("en-US-JennyNeural", "United States", "Female"),
+    ("et-EE-AnuNeural", "Estonia", "Female"), ("fi-FI-HarriNeural", "Finland", "Male"),
     ("fi-FI-NooraNeural", "Finland", "Female"), ("fr-FR-DeniseNeural", "France", "Female"),
-    ("fr-FR-HenriNeural", "France", "Male"), ("hi-IN-SwaraNeural", "India", "Female"),
-    ("hi-IN-MadhurNeural", "India", "Male"), ("it-IT-IsabellaNeural", "Italy", "Female"),
+    ("fr-FR-HenriNeural", "France", "Male"), ("de-DE-KatjaNeural", "Germany", "Female"),
+    ("de-DE-ConradNeural", "Germany", "Male"), ("el-GR-AthinaNeural", "Greece", "Female"),
+    ("he-IL-AvriNeural", "Israel", "Male"), ("hi-IN-MadhurNeural", "India", "Male"),
+    ("hi-IN-SwaraNeural", "India", "Female"), ("hu-HU-NoemiNeural", "Hungary", "Female"),
+    ("id-ID-ArdiNeural", "Indonesia", "Male"), ("it-IT-DiegoNeural", "Italy", "Male"),
+    ("it-IT-IsabellaNeural", "Italy", "Female"), ("ja-JP-KeitaNeural", "Japan", "Male"),
     ("ja-JP-NanamiNeural", "Japan", "Female"), ("ko-KR-SunHiNeural", "Korea (South)", "Female"),
-    ("pt-BR-FranciscaNeural", "Brazil", "Female"), ("ru-RU-SvetlanaNeural", "Russia", "Female"),
-    ("es-ES-ElviraNeural", "Spain", "Female"), ("es-MX-DaliaNeural", "Mexico", "Female"),
-    ("vi-VN-HoaiMyNeural", "Vietnam", "Female"), ("zu-ZA-ThandoNeural", "South Africa", "Female")
+    ("ko-KR-InJoonNeural", "Korea (South)", "Male"), ("ms-MY-OsmanNeural", "Malaysia", "Male"),
+    ("nb-NO-FinnNeural", "Norway", "Male"), ("pl-PL-MarekNeural", "Poland", "Male"),
+    ("pt-BR-FranciscaNeural", "Brazil", "Female"), ("pt-BR-AntonioNeural", "Brazil", "Male"),
+    ("pt-PT-RaquelNeural", "Portugal", "Female"), ("ro-RO-AlinaNeural", "Romania", "Female"),
+    ("ru-RU-DmitryNeural", "Russia", "Male"), ("ru-RU-SvetlanaNeural", "Russia", "Female"),
+    ("es-AR-ElenaNeural", "Argentina", "Female"), ("es-ES-ElviraNeural", "Spain", "Female"),
+    ("es-MX-DaliaNeural", "Mexico", "Female"), ("es-US-AlonsoNeural", "United States", "Male"),
+    ("sv-SE-MattiasNeural", "Sweden", "Male"), ("th-TH-PremwadeeNeural", "Thailand", "Female"),
+    ("tr-TR-AhmetNeural", "Turkey", "Male"), ("uk-UA-PolinaNeural", "Ukraine", "Female"),
+    ("ur-PK-UzmaNeural", "Pakistan", "Female"), ("vi-VN-HoaiMyNeural", "Vietnam", "Female"),
+    ("zu-ZA-ThandoNeural", "South Africa", "Female")
 ]
+
+def build_voice_map():
+    v_map = {}
+    for sn, country, gender in sorted(VOICE_DATA, key=lambda x: x[1]):
+        if country not in v_map:
+            v_map[country] = []
+        v_map[country].append({"id": sn, "label": f"{sn.split('-')[-1]} ({gender})"})
+    return v_map
 
 @app.route('/')
 def index():
-    # Sort and Group voices for dropdown
-    v_map = {}
-    for sn, country, gender in sorted(VOICE_DATA, key=lambda x: x[1]):
-        if country not in v_map: v_map[country] = []
-        v_map[country].append({"id": sn, "label": f"{sn.split('-')[-1]} ({gender})"})
-    return render_template('index.html', voice_map=v_map)
+    return render_template('index.html', voice_map=build_voice_map())
+
+@app.route('/audio-file/<filename>')
+def serve_audio(filename):
+    file_path = os.path.join(AUDIO_STORAGE_DIR, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path, mimetype="audio/mpeg")
+    return "File Not Found", 404
+
+async def synthesize_segment(text: str, voice: str, rate: str) -> bytes:
+    """Synthesizes a single segment of text."""
+    communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate)
+    audio_data = b""
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data += chunk["data"]
+    return audio_data
+
+def generate_mp3_silence(duration_sec: float) -> bytes:
+    """Generates standard silent MP3 frames for custom pauses."""
+    # 1 second of standard 44.1kHz MP3 silence frame padding
+    silent_frame = b'\xff\xfb\x90d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' * 38
+    num_frames = int(duration_sec * 38)
+    return silent_frame[:num_frames * 16]
+
+async def process_full_audio(text: str, voice: str, speed: str, output_path: str):
+    # Calculate official edge-tts rate string (e.g., "+0%", "+10%", "-10%")
+    rate_val = int((float(speed) - 1.0) * 100)
+    rate_str = f"{rate_val:+d}%"
+
+    # Split text by <#0.5#> or <#1.0#> tags
+    parts = re.split(r'<#(.*?)#>', text)
+    
+    final_audio = b""
+    is_pause_tag = False
+
+    for item in parts:
+        if not item:
+            continue
+        
+        if is_pause_tag:
+            try:
+                pause_sec = float(item)
+                final_audio += generate_mp3_silence(pause_sec)
+            except ValueError:
+                pass
+            is_pause_tag = False
+        else:
+            clean_text = item.strip()
+            if clean_text:
+                segment_audio = await synthesize_segment(clean_text, voice, rate_str)
+                final_audio += segment_audio
+            is_pause_tag = True  # Next item in split is the pause duration
+
+    with open(output_path, "wb") as f:
+        f.write(final_audio)
 
 @app.route('/generate', methods=['POST'])
 def generate():
     try:
-        data = request.json
-        raw_text = data.get('text', '')
+        data = request.json or {}
+        text = data.get('text', '').strip()
         voice = data.get('voice', 'en-IN-NeerjaNeural')
         speed = data.get('speed', '1.0')
 
-        if not raw_text:
+        if not text:
             return jsonify({"error": "Text is empty"}), 400
 
-        # SSML Conversion
-        safe_text = html.escape(raw_text)
-        rate_val = int((float(speed) - 1.0) * 100)
-        rate_str = f"{rate_val:+d}%"
+        unique_id = str(uuid.uuid4())
+        filename = f"{unique_id}.mp3"
+        output_path = os.path.join(AUDIO_STORAGE_DIR, filename)
 
-        def tag_to_ssml(match):
-            sec = match.group(1)
-            ms = int(float(sec) * 1000)
-            return f'</prosody><break time="{ms}ms" /><prosody rate="{rate_str}">'
-        
-        processed_text = re.sub(r'&lt;#(.*?)#&gt;', tag_to_ssml, safe_text)
-
-        ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-            <voice name="{voice}"><prosody rate="{rate_str}">{processed_text}</prosody></voice>
-        </speak>"""
-
-        fname = f"{uuid.uuid4()}.mp3"
-        fpath = os.path.join(STATIC_AUDIO, fname)
-        
-        # Use a fresh event loop for Render stability
+        # Run async synthesis safely
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        communicate = edge_tts.Communicate(ssml)
-        loop.run_until_complete(communicate.save(fpath))
+        loop.run_until_complete(process_full_audio(text, voice, speed, output_path))
         loop.close()
 
-        return jsonify({"url": f"/static/audio/{fname}"})
+        return jsonify({"url": f"/audio-file/{filename}"})
 
     except Exception as e:
+        print(f"Error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
