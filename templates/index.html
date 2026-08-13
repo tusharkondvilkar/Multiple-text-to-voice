@@ -5,61 +5,66 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Audio Studio | HRMantra</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --hrm-blue: #003366; --accent: #5c67f2; }
-        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); font-family: 'Inter', sans-serif; min-height: 100vh; }
+        body { background: #f0f2f5; font-family: 'Inter', sans-serif; min-height: 100vh; margin: 0; }
         
-        .navbar { background: white; padding: 15px 50px; box-shadow: 0 2px 15px rgba(0,0,0,0.05); }
-        .main-card {
-            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);
-            border-radius: 25px; padding: 40px; margin: 40px auto;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 1100px;
-        }
-
-        .studio-header { margin-bottom: 30px; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; }
-        .studio-title { font-weight: 800; color: #1a202c; font-size: 2rem; }
-
-        /* Settings Bar */
-        .settings-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
-        .setting-item { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 15px; }
-        .setting-label { font-size: 0.7rem; font-weight: 800; color: #718096; text-transform: uppercase; margin-bottom: 3px; }
-        .form-select { border: none; font-weight: 600; color: var(--hrm-blue); cursor: pointer; padding: 0; height: auto; }
+        /* Header Selectors Area */
+        .top-nav { background: white; padding: 10px 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .controls-header { background: white; padding: 20px 40px; border-bottom: 1px solid #e1e5eb; }
+        
+        .selector-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 15px; background: white; }
+        .selector-label { font-size: 0.65rem; font-weight: 800; color: #718096; text-transform: uppercase; margin-bottom: 2px; }
+        .form-select { border: none; font-weight: 700; color: var(--hrm-blue); cursor: pointer; padding: 0; font-size: 0.95rem; }
         .form-select:focus { box-shadow: none; }
 
-        /* Editor Area */
-        .editor-box { background: white; border: 2px solid #e2e8f0; border-radius: 20px; overflow: hidden; transition: 0.3s; }
-        .editor-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(92, 103, 242, 0.1); }
-        #textInput { width: 100%; border: none; padding: 30px; min-height: 300px; font-size: 1.1rem; line-height: 1.7; resize: none; outline: none; }
+        /* Main Content Container */
+        .studio-container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        
+        /* The Editor Card - Styled like your reference image */
+        .editor-card { background: white; border-radius: 25px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .label-text { color: #5c67f2; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 5px; }
+        .title-text { font-weight: 800; font-size: 2.2rem; color: #1a202c; margin-bottom: 5px; }
+        .sub-text { color: #718096; margin-bottom: 25px; }
 
-        /* Pause Toolbar */
-        .toolbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
-        .pause-btn { border: 1px solid #cbd5e1; background: white; border-radius: 8px; padding: 6px 16px; font-size: 0.85rem; font-weight: 700; color: #475569; transition: 0.2s; }
+        .text-area-wrapper { 
+            border: 2px solid #667eea; border-radius: 20px; 
+            overflow: hidden; background: #fafbff; margin-bottom: 20px;
+        }
+        #textInput { 
+            width: 100%; border: none; padding: 30px; min-height: 350px; 
+            font-size: 1.1rem; line-height: 1.8; resize: none; outline: none; background: transparent;
+        }
+
+        /* Bottom Controls */
+        .bottom-bar { display: flex; justify-content: space-between; align-items: center; }
+        .pause-btn { 
+            border: 1px solid #cbd5e1; background: white; border-radius: 8px; 
+            padding: 8px 20px; font-size: 0.9rem; font-weight: 700; color: #475569; 
+            margin-right: 10px; transition: 0.2s;
+        }
         .pause-btn:hover { border-color: var(--accent); color: var(--accent); }
-        .btn-custom-pause { background: var(--accent); color: white; border: none; }
-        .btn-custom-pause:hover { background: #4a54e1; color: white; }
+        
+        .btn-action { font-weight: 700; border-radius: 12px; padding: 12px 30px; border: none; transition: 0.2s; }
+        .btn-play { background: white; border: 2px solid var(--accent); color: var(--accent); }
+        .btn-download { background: var(--accent); color: white; }
+        .btn-download:hover { background: #4a54e1; transform: translateY(-2px); }
 
-        /* Action Buttons */
-        .btn-generate { background: var(--hrm-blue); color: white; font-weight: 700; border-radius: 12px; padding: 15px 35px; border: none; transition: 0.2s; }
-        .btn-generate:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,51,102,0.3); }
+        .stats-info { font-size: 0.85rem; color: #94a3b8; font-weight: 600; }
     </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="40">
-</nav>
+<div class="top-nav">
+    <img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="35">
+</div>
 
-<div class="main-card">
-    <div class="studio-header">
-        <h1 class="studio-title">AI Audio Studio</h1>
-        <p class="text-muted">Generate professional neural voiceovers with custom pauses.</p>
-    </div>
-
-    <!-- Step-by-Step Settings -->
-    <div class="settings-bar">
-        <div class="setting-item">
-            <p class="setting-label">1. Country</p>
+<!-- SELECTORS IN HEADER -->
+<div class="controls-header">
+    <div class="container-fluid d-flex gap-3 justify-content-center">
+        <div class="selector-box" style="width: 200px;">
+            <p class="selector-label">1. Country</p>
             <select id="countrySelect" class="form-select" onchange="updateVoices()">
                 <option value="">Select Country</option>
                 {% for country in voice_map.keys()|sort %}
@@ -67,14 +72,14 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="setting-item">
-            <p class="setting-label">2. Voice</p>
+        <div class="selector-box" style="width: 250px;">
+            <p class="selector-label">2. Voice</p>
             <select id="voiceSelect" class="form-select" disabled>
                 <option value="">Choose Country first</option>
             </select>
         </div>
-        <div class="setting-item">
-            <p class="setting-label">3. Speed</p>
+        <div class="selector-box" style="width: 180px;">
+            <p class="selector-label">3. Speed</p>
             <select id="speedSelect" class="form-select">
                 <option value="1.0">1.0x (Normal)</option>
                 <option value="1.1">1.1x (Fast)</option>
@@ -82,52 +87,57 @@
                 <option value="0.9">0.9x (Slow)</option>
             </select>
         </div>
-        <div class="setting-item">
-            <p class="setting-label">4. Format</p>
+        <div class="selector-box" style="width: 150px;">
+            <p class="selector-label">4. Format</p>
             <select id="formatSelect" class="form-select">
                 <option value="mp3">MP3</option>
                 <option value="wav">WAV</option>
             </select>
         </div>
     </div>
+</div>
 
-    <!-- Editor -->
-    <div class="editor-box">
-        <textarea id="textInput" placeholder="Enter your text script here... Click the pause buttons below to inject gaps at the cursor position."></textarea>
-        <div class="toolbar">
-            <div class="d-flex align-items-center gap-2">
-                <span class="small fw-bold text-muted me-2">ADD PAUSE:</span>
-                <button class="pause-btn" onclick="insertPause('0.5')">0.5s</button>
-                <button class="pause-btn" onclick="insertPause('1.0')">1.0s</button>
-                <button class="pause-btn" onclick="insertPause('2.0')">2.0s</button>
-                <button class="pause-btn btn-custom-pause" onclick="insertCustomPause()">+ Custom</button>
+<div class="studio-container">
+    <div class="editor-card">
+        <p class="label-text">Text to Speech</p>
+        <h1 class="title-text">AI Audio Studio</h1>
+        <p class="sub-text">Transform your words into natural neural speech.</p>
+
+        <div class="text-area-wrapper">
+            <textarea id="textInput" placeholder="Type or paste your script here...">If you think of a paragraph as a sandwich, <#0.5#>the supporting sentences are the filling between the bread. They make up the body of the paragraph by explaining, proving, or enhancing the controlling idea in the topic sentence. <#0.5#>The overall method of development for paragraphs depends upon the essay <#0.5#>as a whole and the purpose of each paragraph; thus paragraphs may be developed by using examples, description, narration, comparison and contrast, definition, cause and effect, classification and division. <#0.5#>A writer may use one method, or combine several methods.</textarea>
+        </div>
+
+        <div class="bottom-bar">
+            <div class="d-flex align-items-center">
+                <span class="small fw-bold text-muted me-3">Add pause</span>
+                <button class="pause-btn" onclick="insertTag('0.5')">0.5s</button>
+                <button class="pause-btn" onclick="insertTag('1.0')">1.0s</button>
+                <button class="pause-btn" onclick="insertTag('2.0')">2.0s</button>
             </div>
-            <div class="stats text-muted small">
+            
+            <div class="stats-info">
                 <span id="charCount">0</span> / 10,000 characters
+            </div>
+
+            <div class="d-flex gap-3">
+                <button class="btn-action btn-play" onclick="generate(true)">▶ GENERATE & PLAY</button>
+                <button class="btn-action btn-download" id="genBtn" onclick="generate(false)">↓ GENERATE & DOWNLOAD</button>
             </div>
         </div>
     </div>
-
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <div id="loading" style="display:none;" class="text-primary fw-bold">
-            <div class="spinner-border spinner-border-sm me-2"></div> Generating Audio...
-        </div>
-        <div id="playerArea" style="display:none;">
-            <audio id="audioPlayer" controls></audio>
-        </div>
-        <button class="btn-generate ms-auto" id="genBtn" onclick="processAudio()">GENERATE & DOWNLOAD</button>
+    
+    <div id="playerArea" class="mt-4 text-center" style="display:none;">
+        <audio id="audioPlayer" controls class="w-50"></audio>
     </div>
 </div>
 
 <script>
     const voiceMap = {{ voice_map | tojson }};
 
-    // Cascading Dropdown Logic
     function updateVoices() {
         const country = document.getElementById('countrySelect').value;
         const vSelect = document.getElementById('voiceSelect');
         vSelect.innerHTML = '';
-
         if (country && voiceMap[country]) {
             vSelect.disabled = false;
             voiceMap[country].forEach(v => {
@@ -142,45 +152,37 @@
         }
     }
 
-    // Cursor Injection Logic
-    function insertPause(sec) {
+    // INSERT TAG AT CURSOR POSITION
+    function insertTag(sec) {
         const textarea = document.getElementById('textInput');
         const tag = `<#${sec}#>`;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        const text = textarea.value;
+        const currentVal = textarea.value;
 
-        textarea.value = text.substring(0, start) + tag + text.substring(end);
+        textarea.value = currentVal.substring(0, start) + tag + currentVal.substring(end);
+        
+        // Return focus and move cursor after tag
         textarea.focus();
-        const newPos = start + tag.length;
-        textarea.setSelectionRange(newPos, newPos);
-        updateCharCount();
+        textarea.setSelectionRange(start + tag.length, start + tag.length);
+        updateChars();
     }
 
-    function insertCustomPause() {
-        const val = prompt("Enter pause duration in seconds (e.g., 1.5 or 3):", "1.5");
-        if (val && !isNaN(val)) {
-            insertPause(val);
-        }
-    }
-
-    function updateCharCount() {
+    function updateChars() {
         document.getElementById('charCount').innerText = document.getElementById('textInput').value.length;
     }
+    document.getElementById('textInput').addEventListener('input', updateChars);
+    updateChars();
 
-    document.getElementById('textInput').addEventListener('input', updateCharCount);
-
-    async function processAudio() {
+    async function generate(isPlayOnly) {
         const text = document.getElementById('textInput').value;
         const voice = document.getElementById('voiceSelect').value;
         const speed = document.getElementById('speedSelect').value;
         const btn = document.getElementById('genBtn');
 
-        if(!text || !voice) return alert("Please select a voice and enter text.");
+        if(!text || !voice) return alert("Select a voice first!");
 
         btn.disabled = true;
-        document.getElementById('loading').style.display = 'block';
-
         try {
             const res = await fetch('/generate', {
                 method: 'POST',
@@ -189,23 +191,21 @@
             });
             const data = await res.json();
             
-            if(data.urls) {
+            if(data.url) {
                 const player = document.getElementById('audioPlayer');
-                player.src = data.urls.mp3;
-                document.getElementById('playerArea').style.display = 'block';
-                
-                // Auto-download
-                const link = document.createElement('a');
-                link.href = data.urls.mp3;
-                link.download = "HRMantra_AI_Voice.mp3";
-                link.click();
+                player.src = data.url;
+                if(isPlayOnly) {
+                    document.getElementById('playerArea').style.display = 'block';
+                    player.play();
+                } else {
+                    const a = document.createElement('a');
+                    a.href = data.url;
+                    a.download = "HRMantra_Audio.mp3";
+                    a.click();
+                }
             }
-        } catch (e) {
-            alert("Error generating audio.");
-        } finally {
-            btn.disabled = false;
-            document.getElementById('loading').style.display = 'none';
-        }
+        } catch (e) { alert("Error generating audio."); }
+        btn.disabled = false;
     }
 </script>
 </body>
