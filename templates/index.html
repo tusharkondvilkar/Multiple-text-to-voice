@@ -130,14 +130,30 @@
     <a href="#" class="logo-link"><img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="28" alt="HRMantra Logo"></a>
     
     <div class="selector-box">
-        <p class="selector-label">1. Country</p>
-        <select id="countrySelect" class="form-select" onchange="updateVoices()">
-            <option value="">Select Country</option>
-            {% for country in voice_map.keys()|sort %}
+    <p class="selector-label">1. Country</p>
+    <select id="countrySelect" class="form-select" onchange="updateVoices()">
+        {# Define priority order #}
+        {% set priority_countries = ["India", "United States", "United Kingdom", "United Arab Emirates"] %}
+        
+        {# 1. Render Priority Countries First (Pre-select India) #}
+        {% for country in priority_countries %}
+            {% if country in voice_map %}
+            <option value="{{ country }}" {% if country == 'India' %}selected{% endif %}>
+                {{ country }}
+            </option>
+            {% endif %}
+        {% endfor %}
+
+        <option disabled>──────────</option>
+
+        {# 2. Render Remaining Countries Alphabetically #}
+        {% for country in voice_map.keys()|sort %}
+            {% if country not in priority_countries %}
             <option value="{{ country }}">{{ country }}</option>
-            {% endfor %}
-        </select>
-    </div>
+            {% endif %}
+        {% endfor %}
+    </select>
+</div>
     
     <div class="selector-box" style="flex: 1.5; max-width: 250px;">
         <p class="selector-label">2. Voice</p>
