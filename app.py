@@ -14,7 +14,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory,
 
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # Increased upload limit
+app.config["MAX_CONTENT_LENGTH"] = 15 * 1024 * 1024  # 15MB Upload Limit
 
 AUDIO_DIR = Path(os.getenv("AUDIO_OUTPUT_DIR", "/tmp/hrmantra-audio"))
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
@@ -343,8 +343,8 @@ def parse_segments(text: str):
     return segments
 
 
-def split_text_into_chunks(text: str, max_chunk_size: int = 2000):
-    """Splits text into sub-chunks of max 2000 chars on sentence boundaries to prevent TTS streaming timeouts."""
+def split_text_into_chunks(text: str, max_chunk_size: int = 1200):
+    """Splits text into sub-chunks on sentence boundaries for ultra-fast processing."""
     if len(text) <= max_chunk_size:
         return [text]
 
@@ -374,8 +374,8 @@ async def text_chunk_to_pcm(text: str, voice: str, rate: str) -> bytes:
         text=text,
         voice=voice,
         rate=rate,
-        connect_timeout=20,
-        receive_timeout=120,
+        connect_timeout=15,
+        receive_timeout=60,
     )
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
@@ -394,23 +394,23 @@ async def text_chunk_to_pcm(text: str, voice: str, rate: str) -> bytes:
 
 
 async def text_to_pcm(text: str, voice: str, rate: str) -> bytes:
-    """Handles chunking of large texts to prevent timeouts during synthesis."""
-    chunks = split_text_into_chunks(text, max_chunk_size=2000)
-    pcm_chunks = []
-    
-    for chunk in chunks:
+    """Processes large texts via concurrent parallel requests for instant speed."""
+    chunks = split_text_into_chunks(text, max_chunk_size=1200)
+
+    async def fetch_chunk(chunk):
         if not chunk.strip():
-            continue
+            return b""
         for attempt in range(3):
             try:
-                pcm_data = await text_chunk_to_pcm(chunk, voice, rate)
-                pcm_chunks.append(pcm_data)
-                break
+                return await text_chunk_to_pcm(chunk, voice, rate)
             except Exception as e:
                 if attempt == 2:
                     raise e
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
 
+    # Run chunk generation concurrently in parallel!
+    tasks = [fetch_chunk(c) for c in chunks]
+    pcm_chunks = await asyncio.gather(*tasks)
     return b"".join(pcm_chunks)
 
 
@@ -512,7 +512,7 @@ def generate():
             {
                 "error": f"Audio generation failed: {str(exc)}",
             }
-        ), 400
+        ), 500
 
 
 if __name__ == "__main__":
