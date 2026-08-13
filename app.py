@@ -309,7 +309,7 @@ VOICE_DATA = [
     ("zu-ZA-ThembaNeural", "South Africa", "Male"),
 ]
 ALLOWED_VOICES = {voice for voice, _, _ in VOICE_DATA}
-ALLOWED_SPEEDS = {"0.9": "-10%", "1.0": "+0%", "1.1": "+10%"}
+ALLOWED_SPEEDS = {"0.8": "-20%", "0.9": "-10%", "1.0": "+0%", "1.1": "+10%", "1.2": "+20%"}
 ALLOWED_FORMATS = {"mp3", "wav"}
 
 
@@ -349,7 +349,6 @@ def split_text_into_chunks(text: str, max_chunk_size: int = 2000):
         return [text]
 
     chunks = []
-    # Split on sentence endings
     sentences = re.split(r'(?<=[.!?\n])\s+', text)
     current_chunk = []
     current_len = 0
@@ -402,7 +401,6 @@ async def text_to_pcm(text: str, voice: str, rate: str) -> bytes:
     for chunk in chunks:
         if not chunk.strip():
             continue
-        # Retries for reliability on network hiccups
         for attempt in range(3):
             try:
                 pcm_data = await text_chunk_to_pcm(chunk, voice, rate)
@@ -445,35 +443,13 @@ def write_audio(pcm: bytes, path: Path, output_format: str) -> None:
 
 @app.get("/")
 def index():
-    raw_voice_map = {}
+    voice_map = {}
     for short_name, country, gender in VOICE_DATA:
-        raw_voice_map.setdefault(country, []).append(
+        voice_map.setdefault(country, []).append(
             {"id": short_name, "label": f"{short_name.split('-')[-1]} ({gender})"}
         )
 
-    # Priority countries placed at the top separately
-    priority_countries = ["United States", "India"]
-
-    ordered_voice_list = []
-
-    # 1. Add United States and India first
-    for country in priority_countries:
-        if country in raw_voice_map:
-            ordered_voice_list.append((country, raw_voice_map[country]))
-
-    # 2. Add remaining countries alphabetically
-    other_countries = sorted(c for c in raw_voice_map if c not in priority_countries)
-    for country in other_countries:
-        ordered_voice_list.append((country, raw_voice_map[country]))
-
-    # Dict preserves insertion order in Python 3.7+
-    voice_map = dict(ordered_voice_list)
-
-    return render_template(
-        "index.html", 
-        voice_map=voice_map, 
-        ordered_countries=ordered_voice_list
-    )
+    return render_template("index.html", voice_map=voice_map)
 
 
 @app.get("/health")
