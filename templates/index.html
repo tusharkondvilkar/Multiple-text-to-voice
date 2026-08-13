@@ -190,19 +190,8 @@
                 <button class="pause-btn" onclick="insertTag('1.0')">1.0</button>
                 <button class="pause-btn" onclick="insertTag('2.0')">2.0</button>
                 <button class="pause-btn" onclick="insertTag('5.0')">5.0</button>
+                <p>To add Custom Pause Change the value of <#0.5#> to desired timing like <#20.0#> </p>
             </div>
-            <div class="custom-pause-group d-flex align-items-center ms-1">
-        <input type="number" 
-               id="customPauseInput" 
-               class="form-control form-control-sm custom-pause-input" 
-               placeholder="20" 
-               step="0.1" 
-               min="0.1">
-        <button type="button" class="btn btn-sm btn-outline-primary ms-1 custom-add-btn" onclick="insertCustomTag()">
-            Custom Pause
-        </button>
-        </div>
-            
             <div class="action-buttons-group">
                 <button class="btn-action btn-play" id="playBtn" onclick="generate(true)">▶ GENERATE & PLAY</button>
                 <button class="btn-action btn-download" id="genBtn" onclick="generate(false)">↓ GENERATE & DOWNLOAD</button>
