@@ -2,15 +2,20 @@ import os
 import asyncio
 import uuid
 import re
-import tempfile
-from flask import Flask, render_template, request, jsonify, send_file
+import sys
+import html
+from flask import Flask, render_template, request, jsonify
 import edge_tts
 
 app = Flask(__name__)
 
-# Use system /tmp directory to avoid Render git-repo file conflicts
-AUDIO_STORAGE_DIR = os.path.join(tempfile.gettempdir(), 'hrmantra_audio_storage')
-os.makedirs(AUDIO_STORAGE_DIR, exist_ok=True)
+# ROBUST DIRECTORY CONFIG FOR RENDER
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# We use a simple path that works on Render's ephemeral disk
+STATIC_AUDIO = os.path.join(BASE_DIR, 'static', 'audio')
+
+# Create the directory once. exist_ok=True prevents the FileExistsError
+os.makedirs(STATIC_AUDIO, exist_ok=True)
 
 # FULL VOICE DATABASE (110+ Countries & Voices)
 VOICE_DATA = [
@@ -98,89 +103,215 @@ def build_voice_map():
 
 @app.route('/')
 def index():
-    return render_template('index.html', voice_map=build_voice_map())
-
-@app.route('/audio-file/<filename>')
-def serve_audio(filename):
-    file_path = os.path.join(AUDIO_STORAGE_DIR, filename)
-    if os.path.exists(file_path):
-        return send_file(file_path, mimetype="audio/mpeg")
-    return "File Not Found", 404
-
-async def synthesize_segment(text: str, voice: str, rate: str) -> bytes:
-    """Synthesizes a single segment of text."""
-    communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate)
-    audio_data = b""
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_data += chunk["data"]
-    return audio_data
-
-def generate_mp3_silence(duration_sec: float) -> bytes:
-    """Generates standard silent MP3 frames for custom pauses."""
-    # 1 second of standard 44.1kHz MP3 silence frame padding
-    silent_frame = b'\xff\xfb\x90d\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' * 38
-    num_frames = int(duration_sec * 38)
-    return silent_frame[:num_frames * 16]
-
-async def process_full_audio(text: str, voice: str, speed: str, output_path: str):
-    # Calculate official edge-tts rate string (e.g., "+0%", "+10%", "-10%")
-    rate_val = int((float(speed) - 1.0) * 100)
-    rate_str = f"{rate_val:+d}%"
-
-    # Split text by <#0.5#> or <#1.0#> tags
-    parts = re.split(r'<#(.*?)#>', text)
-    
-    final_audio = b""
-    is_pause_tag = False
-
-    for item in parts:
-        if not item:
-            continue
-        
-        if is_pause_tag:
-            try:
-                pause_sec = float(item)
-                final_audio += generate_mp3_silence(pause_sec)
-            except ValueError:
-                pass
-            is_pause_tag = False
-        else:
-            clean_text = item.strip()
-            if clean_text:
-                segment_audio = await synthesize_segment(clean_text, voice, rate_str)
-                final_audio += segment_audio
-            is_pause_tag = True  # Next item in split is the pause duration
-
-    with open(output_path, "wb") as f:
-        f.write(final_audio)
+    v_map = {}
+    for sn, country, gender in sorted(VOICE_DATA, key=lambda x: x[1]):
+        if country not in v_map: v_map[country] = []
+        v_map[country].append({"id": sn, "label": f"{sn.split('-')[-1]} ({gender})"})
+    return render_template('index.html', voice_map=v_map)
 
 @app.route('/generate', methods=['POST'])
-def generate():
+async def generate():
     try:
-        data = request.json or {}
-        text = data.get('text', '').strip()
+        data = request.json
+        raw_text = data.get('text', '')
         voice = data.get('voice', 'en-IN-NeerjaNeural')
         speed = data.get('speed', '1.0')
 
-        if not text:
+        if not raw_text:
             return jsonify({"error": "Text is empty"}), 400
 
-        unique_id = str(uuid.uuid4())
-        filename = f"{unique_id}.mp3"
-        output_path = os.path.join(AUDIO_STORAGE_DIR, filename)
+        # SSML Conversion Logic
+        safe_text = html.escape(raw_text)
+        rate_val = int((float(speed) - 1.0) * 100)
+        rate_str = f"{rate_val:+d}%"
 
-        # Run async synthesis safely
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(process_full_audio(text, voice, speed, output_path))
-        loop.close()
+        def tag_to_ssml(match):
+            sec = match.group(1)
+            ms = int(float(sec) * 1000)
+            return f'</prosody><break time="{ms}ms" /><prosody rate="{rate_str}">'
+        
+        processed_text = re.sub(r'&lt;#(.*?)#&gt;', tag_to_ssml, safe_text)
 
-        return jsonify({"url": f"/audio-file/{filename}"})
+        ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="{voice}"><prosody rate="{rate_str}">{processed_text}</prosody></voice>
+        </speak>"""
+
+        fname = f"{uuid.uuid4()}.mp3"
+        fpath = os.path.join(STATIC_AUDIO, fname)
+        
+        communicate = edge_tts.Communicate(ssml)
+        await communicate.save(fpath)
+
+        return jsonify({"url": f"/static/audio/{fname}"})
 
     except Exception as e:
-        print(f"Error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
+2. Updated templates/index.html (New Action Bar)
+The player and a "Download Now" link will appear on the right side of the buttons as soon as the audio is ready.
+code
+Html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Audio Studio | HRMantra</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --hrm-blue: #003366; --accent: #5c67f2; }
+        body { background: #f8fafc; font-family: 'Inter', sans-serif; margin: 0; }
+        .top-nav { background: white; padding: 10px 40px; border-bottom: 1px solid #e1e5eb; }
+        
+        /* Header Selectors */
+        .controls-row { background: white; padding: 15px 40px; border-bottom: 1px solid #e1e5eb; display: flex; gap: 15px; justify-content: center; }
+        .sel-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 15px; background: white; min-width: 180px; }
+        .sel-label { font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+        .form-select { border: none; font-weight: 700; color: var(--hrm-blue); padding: 0; font-size: 0.9rem; }
+
+        /* Content Area */
+        .glass-card { background: white; border-radius: 30px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); max-width: 1100px; margin: 40px auto; }
+        #textInput { width: 100%; border: 2px solid #e2e8f0; border-radius: 20px; padding: 30px; min-height: 350px; font-size: 1.1rem; line-height: 1.8; resize: none; outline: none; background: #fafbff; margin-bottom: 20px; }
+        #textInput:focus { border-color: var(--accent); }
+
+        /* Buttons & Player Row */
+        .action-bar { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .btn-pause { border: 1px solid #cbd5e1; background: #fff; border-radius: 8px; padding: 6px 18px; font-weight: 700; font-size: 0.85rem; }
+        .btn-main { font-weight: 700; border-radius: 12px; padding: 12px 25px; border: none; transition: 0.2s; }
+        .btn-play { background: #f1f5f9; color: var(--hrm-blue); }
+        .btn-download { background: var(--hrm-blue); color: white; }
+        
+        /* The Player Section */
+        #outputPanel { display: none; background: #eef2ff; padding: 10px 20px; border-radius: 15px; align-items: center; gap: 15px; border: 1px solid #c7d2fe; }
+        .btn-quick-dl { background: #5c67f2; color: white; border-radius: 8px; padding: 5px 12px; font-size: 0.8rem; text-decoration: none; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div class="top-nav"><img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="35"></div>
+
+<div class="controls-row">
+    <div class="sel-box">
+        <p class="sel-label">1. Country</p>
+        <select id="countrySelect" class="form-select" onchange="updateVoices()">
+            <option value="">Select Country</option>
+            {% for country in voice_map.keys() %}
+            <option value="{{ country }}">{{ country }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="sel-box">
+        <p class="sel-label">2. Voice</p>
+        <select id="voiceSelect" class="form-select" disabled><option>Choose Country first</option></select>
+    </div>
+    <div class="sel-box">
+        <p class="sel-label">3. Speed</p>
+        <select id="speedSelect" class="form-select">
+            <option value="1.0">1.0x (Normal)</option>
+            <option value="1.1">1.1x (Fast)</option>
+            <option value="0.9">0.9x (Slow)</option>
+        </select>
+    </div>
+    <div class="sel-box">
+        <p class="sel-label">4. Format</p>
+        <select class="form-select"><option>MP3</option><option>WAV</option></select>
+    </div>
+</div>
+
+<div class="glass-card">
+    <h3 class="fw-bold">AI Audio Studio</h3>
+    <textarea id="textInput" placeholder="Type here...">If you think of a paragraph as a sandwich, <#0.5#>the supporting sentences are the filling between the bread.</textarea>
+
+    <div class="action-bar">
+        <div>
+            <span class="small fw-bold text-muted me-2">Add pause</span>
+            <button class="btn-pause" onclick="addTag('0.5')">0.5s</button>
+            <button class="btn-pause" onclick="addTag('1.0')">1.0s</button>
+            <button class="btn-pause" onclick="addTag('2.0')">2.0s</button>
+        </div>
+
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <button class="btn-main btn-play" id="playBtn" onclick="generate(true)">▶ GENERATE & PLAY</button>
+            <button class="btn-main btn-download" id="dlBtn" onclick="generate(false)">↓ GENERATE & DOWNLOAD</button>
+            
+            <!-- This panel appears on the right side after generation -->
+            <div id="outputPanel">
+                <audio id="audioPlayer" controls style="height: 35px;"></audio>
+                <a id="quickDownload" class="btn-quick-dl" href="#" download="audio.mp3">Download Now</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const voiceMap = {{ voice_map | tojson }};
+
+    function updateVoices() {
+        const country = document.getElementById('countrySelect').value;
+        const vSelect = document.getElementById('voiceSelect');
+        vSelect.innerHTML = '';
+        if (country && voiceMap[country]) {
+            vSelect.disabled = false;
+            voiceMap[country].forEach(v => {
+                let opt = document.createElement('option');
+                opt.value = v.id; opt.textContent = v.label;
+                vSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function addTag(sec) {
+        const area = document.getElementById('textInput');
+        const tag = `<#${sec}#>`;
+        const start = area.selectionStart;
+        area.value = area.value.substring(0, start) + tag + area.value.substring(area.selectionEnd);
+        area.focus();
+        area.setSelectionRange(start + tag.length, start + tag.length);
+    }
+
+    async function generate(isPlayAction) {
+        const text = document.getElementById('textInput').value;
+        const voice = document.getElementById('voiceSelect').value;
+        const speed = document.getElementById('speedSelect').value;
+
+        if(!voice || voice.includes("Choose")) return alert("Please select a voice!");
+
+        document.getElementById('playBtn').disabled = true;
+        document.getElementById('dlBtn').disabled = true;
+
+        try {
+            const res = await fetch('/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ text, voice, speed })
+            });
+            const data = await res.json();
+            
+            if(data.url) {
+                // Show the output panel on the right
+                document.getElementById('outputPanel').style.display = 'flex';
+                const player = document.getElementById('audioPlayer');
+                player.src = data.url;
+                document.getElementById('quickDownload').href = data.url;
+
+                if(isPlayAction) {
+                    player.play();
+                } else {
+                    document.getElementById('quickDownload').click();
+                }
+            } else {
+                alert("Error: " + data.error);
+            }
+        } catch (e) {
+            alert("Connection error. Please wait for Render to spin up.");
+        }
+        
+        document.getElementById('playBtn').disabled = false;
+        document.getElementById('dlBtn').disabled = false;
+    }
+</script>
+</body>
+</html>
