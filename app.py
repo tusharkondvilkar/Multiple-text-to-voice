@@ -393,15 +393,32 @@ def write_audio(pcm: bytes, path: Path, output_format: str) -> None:
     encoder.set_quality(2)
     path.write_bytes(encoder.encode(pcm) + encoder.flush())
 
-
 @app.get("/")
 def index():
-    voice_map = {}
+    raw_voice_map = {}
     for short_name, country, gender in VOICE_DATA:
-        voice_map.setdefault(country, []).append(
+        raw_voice_map.setdefault(country, []).append(
             {"id": short_name, "label": f"{short_name.split('-')[-1]} ({gender})"}
         )
+
+    # Priority countries to place at the top on separate lines
+    priority_countries = ["United States", "India"]
+
+    voice_map = {}
+
+    # 1. Add United States and India first
+    for country in priority_countries:
+        if country in raw_voice_map:
+            voice_map[country] = raw_voice_map[country]
+
+    # 2. Add the remaining countries in alphabetical order
+    other_countries = sorted(c for c in raw_voice_map if c not in priority_countries)
+    for country in other_countries:
+        voice_map[country] = raw_voice_map[country]
+
     return render_template("index.html", voice_map=voice_map)
+
+
 
 
 @app.get("/health")
