@@ -20,7 +20,7 @@ AUDIO_DIR = Path(os.getenv("AUDIO_OUTPUT_DIR", "/tmp/hrmantra-audio"))
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_TEXT_LENGTH = 10_000
-MAX_PAUSE_SECONDS = 10.0
+MAX_PAUSE_SECONDS = 60.0  # Increased limit to allow longer custom pauses
 FILE_TTL_SECONDS = 60 * 60
 PAUSE_PATTERN = re.compile(r"<#\s*(\d+(?:\.\d+)?)\s*#>")
 
@@ -331,7 +331,7 @@ def parse_segments(text: str):
             segments.append(("text", spoken))
         pause_seconds = float(match.group(1))
         if not 0 < pause_seconds <= MAX_PAUSE_SECONDS:
-            raise ValueError("Each pause must be between 0 and 10 seconds.")
+            raise ValueError(f"Each pause must be between 0 and {int(MAX_PAUSE_SECONDS)} seconds.")
         segments.append(("pause", pause_seconds))
         cursor = match.end()
 
@@ -393,6 +393,7 @@ def write_audio(pcm: bytes, path: Path, output_format: str) -> None:
     encoder.set_quality(2)
     path.write_bytes(encoder.encode(pcm) + encoder.flush())
 
+
 @app.get("/")
 def index():
     raw_voice_map = {}
@@ -401,24 +402,29 @@ def index():
             {"id": short_name, "label": f"{short_name.split('-')[-1]} ({gender})"}
         )
 
-    # Priority countries to place at the top on separate lines
+    # Priority countries placed at the top separately
     priority_countries = ["United States", "India"]
 
-    voice_map = {}
+    ordered_voice_list = []
 
     # 1. Add United States and India first
     for country in priority_countries:
         if country in raw_voice_map:
-            voice_map[country] = raw_voice_map[country]
+            ordered_voice_list.append((country, raw_voice_map[country]))
 
-    # 2. Add the remaining countries in alphabetical order
+    # 2. Add remaining countries alphabetically
     other_countries = sorted(c for c in raw_voice_map if c not in priority_countries)
     for country in other_countries:
-        voice_map[country] = raw_voice_map[country]
+        ordered_voice_list.append((country, raw_voice_map[country]))
 
-    return render_template("index.html", voice_map=voice_map)
+    # Dict preserves insertion order in Python 3.7+
+    voice_map = dict(ordered_voice_list)
 
-
+    return render_template(
+        "index.html", 
+        voice_map=voice_map, 
+        ordered_countries=ordered_voice_list
+    )
 
 
 @app.get("/health")
@@ -461,6 +467,7 @@ def generate():
         cleanup_old_audio()
         filename = f"{uuid.uuid4().hex}.{output_format}"
         output_path = AUDIO_DIR / filename
+        
         pcm = asyncio.run(build_pcm(segments, voice, ALLOWED_SPEEDS[speed]))
         write_audio(pcm, output_path, output_format)
 
@@ -478,10 +485,9 @@ def generate():
         app.logger.exception("Audio generation failed")
         return jsonify(
             {
-                "error": "Audio generation failed. Please try again.",
-                "detail": str(exc) if app.debug else None,
+                "error": f"Audio generation failed: {str(exc)}",
             }
-        ), 502
+        ), 400
 
 
 if __name__ == "__main__":
