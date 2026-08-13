@@ -10,10 +10,10 @@
         :root { --hrm-blue: #003366; --hrm-text: #1e293b; --accent: #5c67f2; --border: #e2e8f0; }
         body { background: #f1f5f9; font-family: 'Inter', sans-serif; color: var(--hrm-text); }
         
-        /* Layout Compression */
+        /* Header & Controls Layout */
         .header-controls-group {
             background: white;
-            padding: 8px 15px; /* Reduced from 20px */
+            padding: 8px 15px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -30,21 +30,16 @@
         .voice-search-input.show { display: block; }
 
         .app-container { max-width: 1300px; margin: 0 auto; padding: 20px; }
-        
-        /* Editor Card */
         .editor-card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
         
-        /* Title row and counts */
         .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px;}
-        .count-display { font-size: 0.75rem; color: #94a3b8; font-weight: 600; }
+        .count-display { font-size: 0.8rem; color: #5c67f2; font-weight: 700; background: #eef2ff; padding: 4px 10px; border-radius: 8px; }
 
-        /* Text Area */
         .text-area-wrapper { border: 2px solid var(--border); border-radius: 12px; position: relative; margin-bottom: 15px; }
         .text-area-wrapper:focus-within { border-color: var(--accent); }
         #textInput { width: 100%; border: none; padding: 15px; min-height: 160px; font-size: 1rem; line-height: 1.6; resize: vertical; outline: none; border-radius: 12px; }
         .shortcut-tip { position: absolute; bottom: 8px; right: 12px; font-size: 0.7rem; color: #cbd5e1; pointer-events: none; }
 
-        /* Actions */
         .btn-action { font-weight: 700; border-radius: 10px; padding: 10px 20px; border: none; font-size: 0.9rem;}
         .btn-play { background: #e2e8f0; color: var(--hrm-blue); }
         .btn-play:hover { background: #cbd5e1; }
@@ -55,19 +50,27 @@
         .pause-btn { border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: 4px 10px; font-weight: 700; font-size: 0.75rem; color: var(--hrm-blue); }
         .pause-btn:hover { background: #f1f5f9; }
 
+        /* Timeline Styles */
+        .timeline-wrapper { display: none; margin-top: 15px; padding: 12px 16px; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; }
+        .timeline-wrapper.show { display: block; }
+        .timeline-steps { display: flex; justify-content: space-between; align-items: center; position: relative; }
+        .step-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: #94a3b8; }
+        .step-item.active { color: var(--hrm-blue); font-weight: 700; }
+        .step-item.completed { color: #10b981; }
+        .step-badge { width: 20px; height: 20px; border-radius: 50%; background: #e2e8f0; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; }
+        .step-item.active .step-badge { background: var(--hrm-blue); }
+        .step-item.completed .step-badge { background: #10b981; }
+        .timer-badge { font-size: 0.75rem; font-weight: 700; color: var(--accent); background: #eef2ff; padding: 2px 8px; border-radius: 12px; }
+
         /* Player Section */
         .player-section { display: none; margin-top: 20px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: #f8fafc; }
         .player-section.show { display: block; }
         #audioPlayer { width: 100%; margin-bottom: 12px; height: 35px;}
 
-        /* Player Smart Button */
         .player-controls { display: flex; gap: 10px; align-items: center; }
         .player-btn { border: none; border-radius: 8px; padding: 8px 16px; font-weight: 700; font-size: 0.85rem; }
-        
-        /* Single toggle button */
         .player-toggle-play { background: var(--hrm-blue); color: white; min-width: 110px; } 
-        .player-toggle-play.playing { background: #f59e0b; /* Orange for pause */ }
-
+        .player-toggle-play.playing { background: #f59e0b; }
         .player-stop { background: #e2e8f0; color: var(--hrm-text); }
         .player-download-secondary { background: #fff; color: var(--hrm-blue); border: 1px solid var(--hrm-blue); }
 
@@ -84,12 +87,45 @@
             .action-buttons-group { width: 100%; display: flex; gap: 8px; }
             .action-buttons-group .btn-action { flex: 1; padding: 10px 10px; font-size: 0.8rem;}
             .player-controls { flex-wrap: wrap; }
+            .timeline-steps { flex-direction: column; align-items: flex-start; gap: 8px; }
         }
     </style>
+
+    <!-- FOOLPROOF INDEPENDENT COUNTER SCRIPT (Runs instantly without waiting) -->
+    <script>
+        function updateCounts() {
+            var textarea = document.getElementById('textInput');
+            var charSpan = document.getElementById('charCount');
+            var wordSpan = document.getElementById('wordCount');
+            
+            if (!textarea || !charSpan || !wordSpan) return;
+
+            var val = textarea.value || '';
+            
+            // Calculate Character Count
+            charSpan.innerText = val.length;
+
+            // Calculate Word Count (Strip pause tags like <#0.5#>)
+            var cleanText = val.replace(/<#[\d\.]+#>/g, '').trim();
+            var words = cleanText === '' ? 0 : cleanText.split(/\s+/).length;
+            wordSpan.innerText = words;
+        }
+
+        // Attach listeners immediately when window/DOM is ready
+        window.addEventListener('DOMContentLoaded', function() {
+            var textarea = document.getElementById('textInput');
+            if (textarea) {
+                textarea.addEventListener('input', updateCounts);
+                textarea.addEventListener('keyup', updateCounts);
+                textarea.addEventListener('paste', updateCounts);
+                textarea.addEventListener('change', updateCounts);
+            }
+            updateCounts(); // Run initial calculation
+        });
+    </script>
 </head>
 <body>
 
-<!-- COMPRESSED HEADER: Logo and Controls in one row -->
 <div class="header-controls-group">
     <a href="#" class="logo-link"><img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" height="28" alt="HRMantra Logo"></a>
     
@@ -136,7 +172,7 @@
                 <h5 class="fw-bold mb-0">AI Audio Studio</h5>
                 <p class="text-muted small mb-0">Neural speech generator.</p>
             </div>
-            <!-- SMART FEATURE: Live Counts -->
+            <!-- REAL-TIME WORKING COUNTER -->
             <div class="count-display">
                 <span id="charCount">0</span> chars | <span id="wordCount">0</span> words
             </div>
@@ -144,7 +180,6 @@
 
         <div class="text-area-wrapper">
             <textarea id="textInput" placeholder="Enter text here... Use 'Add pause' buttons to insert silence.">Welcome to HRMantra AI Audio Studio. If you think of a paragraph as a sandwich, <#0.5#> the supporting sentences are the filling between the bread.</textarea>
-            <!-- SMART FEATURE: Keyboard Shortcut Hint -->
             <div class="shortcut-tip">Ctrl+Enter to Play</div>
         </div>
 
@@ -154,9 +189,7 @@
                 <button class="pause-btn" onclick="insertTag('0.5')">0.5</button>
                 <button class="pause-btn" onclick="insertTag('1.0')">1.0</button>
                 <button class="pause-btn" onclick="insertTag('2.0')">2.0</button>
-                <button class="pause-btn" onclick="insertTag('3.0')">3.0</button>
                 <button class="pause-btn" onclick="insertTag('5.0')">5.0</button>
-                <button class="pause-btn" onclick="insertTag('10.0')">10.0</button>
             </div>
             <div class="action-buttons-group">
                 <button class="btn-action btn-play" id="playBtn" onclick="generate(true)">▶ GENERATE & PLAY</button>
@@ -164,11 +197,36 @@
             </div>
         </div>
 
+        <!-- PROCESS TIMELINE & TIMER -->
+        <div class="timeline-wrapper" id="timelineWrapper">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold text-muted">Generation Progress</span>
+                <span class="timer-badge" id="timerBadge">0.0s</span>
+            </div>
+            <div class="timeline-steps">
+                <div class="step-item" id="step1">
+                    <div class="step-badge">1</div>
+                    <span>Preparing Text</span>
+                </div>
+                <div class="step-item" id="step2">
+                    <div class="step-badge">2</div>
+                    <span>Synthesizing Voice</span>
+                </div>
+                <div class="step-item" id="step3">
+                    <div class="step-badge">3</div>
+                    <span>Audio Ready</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLAYER SECTION -->
         <div class="player-section" id="playerSection">
-            <h6 class="fw-bold mb-2">Generated Audio</h6>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0">Generated Audio Player</h6>
+                <span class="small text-muted fw-bold" id="totalTimeTaken"></span>
+            </div>
             <audio id="audioPlayer" controls preload="metadata"></audio>
             <div class="player-controls">
-                <!-- SMART FEATURE: State-aware Play/Pause button -->
                 <button class="player-btn player-toggle-play" id="playerToggleBtn" type="button" onclick="togglePlayPause()">▶ PLAY</button>
                 <button class="player-btn player-stop" type="button" onclick="stopGeneratedAudio()">■ STOP</button>
                 <button class="player-btn player-download-secondary" type="button" onclick="downloadGeneratedAudio()">↓ DOWNLOAD</button>
@@ -177,45 +235,72 @@
     </div>
 </div>
 
+<!-- AUDIO GENERATION SCRIPT WITH JINJA SAFE FALLBACK -->
 <script>
-    // Assuming voiceMap is passed from Flask/Jinja2
-    const voiceMap = {{ voice_map | tojson }}; 
+    // Safe evaluation to prevent JS syntax error if opened standalone
+    let voiceMap = {};
+    try {
+        voiceMap = {{ voice_map | tojson }} || {};
+    } catch(e) {
+        console.warn("voiceMap Jinja object not available in offline/static mode.");
+    }
+
     let generatedAudioUrl = '';
     let generatedAudioFilename = 'HRMantra_Audio.mp3';
     const audioPlayer = document.getElementById('audioPlayer');
     const playerToggleBtn = document.getElementById('playerToggleBtn');
+    
+    let timerInterval = null;
+    let startTime = 0;
 
-    // --- Core initialization ---
-    window.onload = function() {
-        updateCounts(); // Initialize counts
-        // Handle keyboard shortcut (Ctrl+Enter)
+    document.addEventListener("DOMContentLoaded", function() {
         document.getElementById('textInput').addEventListener('keydown', function(e) {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 generate(true);
             }
         });
-        // Handle standard live count update
-        document.getElementById('textInput').addEventListener('input', updateCounts);
-        
-        // Setup audio player event listeners for smart button
+
         audioPlayer.addEventListener('play', updatePlayerButtonState);
         audioPlayer.addEventListener('pause', updatePlayerButtonState);
         audioPlayer.addEventListener('ended', resetPlayerButtonState);
-    };
+    });
 
-    // --- SMART FEATURE: Live Counts ---
-    function updateCounts() {
-        const text = document.getElementById('textInput').value;
-        const charCount = text.length;
-        // Simple word count, removing empty strings from split
-        const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+    function startTimeline() {
+        document.getElementById('timelineWrapper').classList.add('show');
+        setStep(1);
+        startTime = Date.now();
+        document.getElementById('timerBadge').textContent = '0.0s';
         
-        document.getElementById('charCount').textContent = charCount;
-        document.getElementById('wordCount').textContent = wordCount;
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            document.getElementById('timerBadge').textContent = `${elapsed}s`;
+        }, 100);
     }
 
-    // --- SMART FEATURE: Voice Search ---
+    function setStep(stepNumber) {
+        for (let i = 1; i <= 3; i++) {
+            const el = document.getElementById(`step${i}`);
+            el.classList.remove('active', 'completed');
+            if (i < stepNumber) {
+                el.classList.add('completed');
+            } else if (i === stepNumber) {
+                el.classList.add('active');
+            }
+        }
+    }
+
+    function stopTimeline() {
+        clearInterval(timerInterval);
+        const totalDuration = ((Date.now() - startTime) / 1000).toFixed(2);
+        document.getElementById('totalTimeTaken').textContent = `⚡ Generated in ${totalDuration}s`;
+        setStep(3);
+        setTimeout(() => {
+            document.getElementById('timelineWrapper').classList.remove('show');
+        }, 1000);
+    }
+
     function filterVoices() {
         const searchInput = document.getElementById('voiceSearch');
         const filter = searchInput.value.toLowerCase();
@@ -225,11 +310,7 @@
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
             const txt = opt.textContent || opt.innerText;
-            if (txt.toLowerCase().indexOf(filter) > -1) {
-                opt.style.display = "";
-            } else {
-                opt.style.display = "none";
-            }
+            opt.style.display = txt.toLowerCase().indexOf(filter) > -1 ? "" : "none";
         }
     }
 
@@ -239,11 +320,11 @@
         const vSearch = document.getElementById('voiceSearch');
         
         vSelect.innerHTML = '';
-        vSearch.value = ''; // Clear search on country change
+        vSearch.value = '';
 
         if (country && voiceMap[country]) {
             vSelect.disabled = false;
-            vSearch.classList.add('show'); // Show search input
+            vSearch.classList.add('show');
 
             voiceMap[country].forEach(v => {
                 const opt = document.createElement('option');
@@ -253,7 +334,7 @@
             });
         } else {
             vSelect.disabled = true;
-            vSearch.classList.remove('show'); // Hide search input
+            vSearch.classList.remove('show');
             vSelect.innerHTML = '<option>Choose Country first</option>';
         }
     }
@@ -265,10 +346,8 @@
         textarea.value = textarea.value.substring(0, start) + tag + textarea.value.substring(textarea.selectionEnd);
         textarea.focus();
         textarea.setSelectionRange(start + tag.length, start + tag.length);
-        updateCounts(); // Update counts after insertion
+        if (typeof updateCounts === 'function') updateCounts();
     }
-
-    // --- SMART FEATURE: Smart Player Button Logic ---
 
     function showGeneratedPlayer(url, filename) {
         audioPlayer.pause();
@@ -278,7 +357,7 @@
         audioPlayer.src = url;
         audioPlayer.load();
         document.getElementById('playerSection').classList.add('show');
-        resetPlayerButtonState(); // Ensure it starts as PLAY
+        resetPlayerButtonState();
     }
 
     function updatePlayerButtonState() {
@@ -298,7 +377,6 @@
 
     async function togglePlayPause() {
         if (!generatedAudioUrl) return alert('Please generate audio first.');
-        
         if (audioPlayer.paused) {
             await audioPlayer.play();
         } else {
@@ -322,7 +400,6 @@
         link.remove();
     }
 
-    // --- Generation Logic ---
     async function generate(isPlayOnly) {
         const text = document.getElementById('textInput').value;
         const voice = document.getElementById('voiceSelect').value;
@@ -334,29 +411,33 @@
         if(!voice || voice.includes("Choose")) return alert("Please select a voice!");
         if(!text.trim()) return alert("Please enter text to generate audio.");
 
-        // Visual feedback
         genBtn.disabled = true;
         playBtn.disabled = true;
-        genBtn.innerHTML = "Generating...";
-        playBtn.innerHTML = "Generating...";
+
+        startTimeline();
 
         try {
+            setTimeout(() => setStep(2), 300);
+
             const res = await fetch('/generate', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ text, voice, speed, format })
             });
+            
             const contentType = res.headers.get('content-type') || '';
             if (!contentType.includes('application/json')) {
                 throw new Error(`Server returned ${res.status}. Check Render logs.`);
             }
+            
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `Server returned ${res.status}.`);
             
             if(data.url) {
+                stopTimeline();
                 showGeneratedPlayer(data.url, data.filename || `HRMantra_Audio.${format}`);
                 if(isPlayOnly) {
-                    await audioPlayer.play(); // This will trigger updatePlayerButtonState()
+                    await audioPlayer.play();
                 } else {
                     downloadGeneratedAudio();
                 }
@@ -364,13 +445,12 @@
                 throw new Error(data.error || "Unknown server error.");
             }
         } catch (e) {
+            clearInterval(timerInterval);
+            document.getElementById('timelineWrapper').classList.remove('show');
             alert(e.message || "Connection error. Please try again.");
         } finally {
-            // Restore buttons
             genBtn.disabled = false;
             playBtn.disabled = false;
-            genBtn.innerHTML = "↓ GENERATE & DOWNLOAD";
-            playBtn.innerHTML = "▶ GENERATE & PLAY";
         }
     }
 </script>
