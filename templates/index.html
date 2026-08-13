@@ -26,6 +26,19 @@
         .btn-play { background: #f1f5f9; color: var(--hrm-blue); margin-right: 10px; }
         .btn-download { background: var(--hrm-blue); color: white; }
         .pause-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; padding: 6px 15px; font-weight: 700; font-size: 0.85rem; margin-right: 8px; }
+        .player-section { display: none; margin-top: 28px; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px; background: #f8fafc; }
+        .player-section.show { display: block; }
+        .player-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .player-btn { border: none; border-radius: 10px; padding: 10px 18px; font-weight: 700; }
+        .player-play { background: var(--hrm-blue); color: white; }
+        .player-stop { background: #e2e8f0; color: #1e293b; }
+        .player-download { background: #fff; color: var(--hrm-blue); border: 1px solid var(--hrm-blue); }
+        #audioPlayer { width: 100%; margin-bottom: 16px; }
+        @media (max-width: 768px) {
+            .controls-header { flex-wrap: wrap; padding: 16px; }
+            .editor-card { margin: 20px 12px; padding: 24px; }
+            .editor-actions { align-items: flex-start !important; flex-direction: column; gap: 18px; }
+        }
     </style>
 </head>
 <body>
@@ -68,7 +81,7 @@
         <textarea id="textInput" placeholder="Enter text...">If you think of a paragraph as a sandwich, <#0.5#>the supporting sentences are the filling between the bread.</textarea>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center editor-actions">
         <div>
             <span class="small fw-bold text-muted me-2">Add pause</span>
             <button class="pause-btn" onclick="insertTag('0.5')">0.5s</button>
@@ -80,10 +93,22 @@
             <button class="btn-action btn-download" id="genBtn" onclick="generate(false)">↓ GENERATE & DOWNLOAD</button>
         </div>
     </div>
+
+    <div class="player-section" id="playerSection">
+        <h6 class="fw-bold mb-3">Generated Audio Player</h6>
+        <audio id="audioPlayer" controls preload="metadata"></audio>
+        <div class="player-controls">
+            <button class="player-btn player-play" type="button" onclick="playGeneratedAudio()">▶ PLAY</button>
+            <button class="player-btn player-stop" type="button" onclick="stopGeneratedAudio()">■ STOP</button>
+            <button class="player-btn player-download" type="button" onclick="downloadGeneratedAudio()">↓ DOWNLOAD</button>
+        </div>
+    </div>
 </div>
 
 <script>
     const voiceMap = {{ voice_map | tojson }};
+    let generatedAudioUrl = '';
+    let generatedAudioFilename = 'HRMantra_Audio.mp3';
 
     function updateVoices() {
         const country = document.getElementById('countrySelect').value;
@@ -110,6 +135,38 @@
         textarea.value = textarea.value.substring(0, start) + tag + textarea.value.substring(textarea.selectionEnd);
         textarea.focus();
         textarea.setSelectionRange(start + tag.length, start + tag.length);
+    }
+
+    function showGeneratedPlayer(url, filename) {
+        const audioPlayer = document.getElementById('audioPlayer');
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        generatedAudioUrl = url;
+        generatedAudioFilename = filename;
+        audioPlayer.src = url;
+        audioPlayer.load();
+        document.getElementById('playerSection').classList.add('show');
+    }
+
+    async function playGeneratedAudio() {
+        if (!generatedAudioUrl) return alert('Please generate audio first.');
+        await document.getElementById('audioPlayer').play();
+    }
+
+    function stopGeneratedAudio() {
+        const audioPlayer = document.getElementById('audioPlayer');
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+    }
+
+    function downloadGeneratedAudio() {
+        if (!generatedAudioUrl) return alert('Please generate audio first.');
+        const link = document.createElement('a');
+        link.href = generatedAudioUrl;
+        link.download = generatedAudioFilename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
     }
 
     async function generate(isPlayOnly) {
@@ -139,16 +196,11 @@
             if (!res.ok) throw new Error(data.error || `Server returned ${res.status}.`);
             
             if(data.url) {
+                showGeneratedPlayer(data.url, data.filename || `HRMantra_Audio.${format}`);
                 if(isPlayOnly) {
-                    const audio = new Audio(data.url);
-                    await audio.play();
+                    await playGeneratedAudio();
                 } else {
-                    const a = document.createElement('a');
-                    a.href = data.url;
-                    a.download = data.filename || `HRMantra_Audio.${format}`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                    downloadGeneratedAudio();
                 }
             } else {
                 throw new Error(data.error || "Unknown server error.");
