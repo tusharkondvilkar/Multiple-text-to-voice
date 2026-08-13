@@ -1,85 +1,77 @@
-import os
-import asyncio
-import uuid
-import sys
+import os, asyncio, uuid, re, sys
 from flask import Flask, render_template, request, jsonify
 import edge_tts
 
-# PATCH: Fix for Python 3.13+ missing audioop (needed for WAV conversion)
+# Python 3.13+ Compatibility Fix
 try:
     import audioop
 except ImportError:
     try:
         import audioop_lts as audioop
         sys.modules['audioop'] = audioop
-    except ImportError:
-        pass
+    except ImportError: pass
 
 app = Flask(__name__)
-
-# Ensure directories exist
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_AUDIO = os.path.join(BASE_DIR, 'static', 'audio')
+STATIC_AUDIO = os.path.join(os.path.dirname(__file__), 'static', 'audio')
 os.makedirs(STATIC_AUDIO, exist_ok=True)
 
-# Full Voice Database
+# Organized Voice Database
 VOICE_DATA = [
     ("en-IN-NeerjaNeural", "India", "Female"), ("en-IN-PrabhatNeural", "India", "Male"),
     ("hi-IN-SwaraNeural", "India", "Female"), ("hi-IN-MadhurNeural", "India", "Male"),
-    ("bn-IN-TanishaaNeural", "India", "Female"), ("gu-IN-DhwaniNeural", "India", "Female"),
-    ("kn-IN-SapnaNeural", "India", "Female"), ("ml-IN-SobhanaNeural", "India", "Female"),
-    ("ta-IN-PallaviNeural", "India", "Female"), ("te-IN-ShrutiNeural", "India", "Female"),
     ("en-US-AvaNeural", "United States", "Female"), ("en-US-AndrewNeural", "United States", "Male"),
-    ("en-US-EmmaNeural", "United States", "Female"), ("en-US-BrianNeural", "United States", "Male"),
     ("en-GB-SoniaNeural", "United Kingdom", "Female"), ("en-GB-ThomasNeural", "United Kingdom", "Male"),
     ("en-AU-NatashaNeural", "Australia", "Female"), ("en-AU-WilliamNeural", "Australia", "Male"),
+    ("en-CA-ClaraNeural", "Canada", "Female"), ("en-CA-LiamNeural", "Canada", "Male"),
     ("fr-FR-DeniseNeural", "France", "Female"), ("fr-FR-HenriNeural", "France", "Male"),
     ("de-DE-KatjaNeural", "Germany", "Female"), ("de-DE-ConradNeural", "Germany", "Male"),
-    ("ar-SA-ZariyahNeural", "Saudi Arabia", "Female"), ("ar-SA-HamedNeural", "Saudi Arabia", "Male"),
 ]
-
-def get_voice_map():
-    v_map = {}
-    for short_name, country, gender in VOICE_DATA:
-        if country not in v_map: v_map[country] = []
-        v_map[country].append({"id": short_name, "gender": gender, "label": f"{short_name} ({gender})"})
-    return v_map
 
 @app.route('/')
 def index():
-    # Pass voice_map to the template for the dropdowns
-    return render_template('index.html', voice_map=get_voice_map())
-
-async def run_tts(text, voice, path):
-    communicate = edge_tts.Communicate(text, voice)
-    await communicate.save(path)
+    # Group voices by country for the cascading dropdown
+    v_map = {}
+    for sn, country, gender in VOICE_DATA:
+        if country not in v_map: v_map[country] = []
+        v_map[country].append({"id": sn, "label": f"{sn.split('-')[-1]} ({gender})"})
+    return render_template('index.html', voice_map=v_map)
 
 @app.route('/generate', methods=['POST'])
-def generate():
-    try:
-        data = request.json
-        text = data.get('text', '').strip()
-        voice = data.get('voice', '')
-        delay = data.get('delay', '0')
+async def generate():
+    data = request.json
+    text = data.get('text', '')
+    voice = data.get('voice', '')
+    speed = data.get('speed', '1.0')
+    
+    # Logic to convert <#0.5#> tags to SSML silence tags
+    def tag_to_ssml(match):
+        sec = match.group(1)
+        try:
+            ms = int(float(sec) * 1000)
+            return f'<break time="{ms}ms" />'
+        except: return ''
+    
+    processed_text = re.sub(r'<#(.*?)#>', tag_to_ssml, text)
 
-        if not text or not voice:
-            return jsonify({"error": "Missing data"}), 400
+    # Speed logic
+    rate_change = int((float(speed) - 1.0) * 100)
+    rate_str = f"{rate_change:+d}%"
 
-        unique_id = str(uuid.uuid4())
-        filename = f"{unique_id}.mp3"
-        file_path = os.path.join(STATIC_AUDIO, filename)
+    ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+        <voice name="{voice}">
+            <prosody rate="{rate_str}">
+                {processed_text}
+            </prosody>
+        </voice>
+    </speak>"""
 
-        # Run the async TTS in a synchronous Flask route
-        asyncio.run(run_tts(text, voice, file_path))
+    fname = str(uuid.uuid4())
+    mp3_path = os.path.join(STATIC_AUDIO, f"{fname}.mp3")
+    
+    communicate = edge_tts.Communicate(ssml)
+    await communicate.save(mp3_path)
 
-        return jsonify({
-            "urls": {
-                "mp3": f"/static/audio/{filename}"
-            }
-        })
-    except Exception as e:
-        print(f"ERROR: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"urls": {"mp3": f"/static/audio/{fname}.mp3"}})
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
