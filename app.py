@@ -3,25 +3,20 @@ import asyncio
 import uuid
 import re
 import sys
+import html
 from flask import Flask, render_template, request, jsonify
 import edge_tts
 
 app = Flask(__name__)
 
-# ROBUST DIRECTORY CONFIGURATION
+# Absolute paths for Render
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
-STATIC_AUDIO = os.path.join(STATIC_DIR, 'audio')
+STATIC_AUDIO = os.path.join(BASE_DIR, 'static', 'audio')
 
-# Create directories with error handling for Render
-try:
-    if not os.path.exists(STATIC_DIR):
-        os.makedirs(STATIC_DIR, exist_ok=True)
-    if not os.path.exists(STATIC_AUDIO):
-        os.makedirs(STATIC_AUDIO, exist_ok=True)
-except Exception as e:
-    print(f"Directory creation warning: {e}")
+# Ensure directory exists without crashing
+os.makedirs(STATIC_AUDIO, exist_ok=True)
 
+# Complete Voice List (Add your full list here)
 VOICE_DATA = [
     ("en-IN-NeerjaNeural", "India", "Female"), ("en-IN-PrabhatNeural", "India", "Male"),
     ("hi-IN-SwaraNeural", "India", "Female"), ("hi-IN-MadhurNeural", "India", "Male"),
@@ -39,39 +34,53 @@ def index():
 
 @app.route('/generate', methods=['POST'])
 async def generate():
-    data = request.json
-    text = data.get('text', '')
-    voice = data.get('voice', 'en-IN-NeerjaNeural')
-    speed = data.get('speed', '1.0')
-
-    # REGEX to find <#0.5#> and convert to SSML <break />
-    def tag_to_ssml(match):
-        sec = match.group(1)
-        ms = int(float(sec) * 1000)
-        return f'<break time="{ms}ms" />'
-    
-    processed_text = re.sub(r'<#(.*?)#>', tag_to_ssml, text)
-
-    # Calculate Speed Prosody
-    rate_val = int((float(speed) - 1.0) * 100)
-    rate_str = f"{rate_val:+d}%"
-
-    ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-        <voice name="{voice}">
-            <prosody rate="{rate_str}">
-                {processed_text}
-            </prosody>
-        </voice>
-    </speak>"""
-
-    fname = f"{uuid.uuid4()}.mp3"
-    fpath = os.path.join(STATIC_AUDIO, fname)
-    
     try:
+        data = request.json
+        raw_text = data.get('text', '')
+        voice = data.get('voice', 'en-IN-NeerjaNeural')
+        speed = data.get('speed', '1.0')
+
+        if not raw_text:
+            return jsonify({"error": "No text provided"}), 400
+
+        # 1. ESCAPE TEXT (Crucial for SSML)
+        # This prevents characters like & or < from breaking the AI
+        safe_text = html.escape(raw_text)
+
+        # 2. CONVERT TAGS <#0.5#> back to SSML tags
+        # We use unescape only for our specific tags after escaping everything else
+        def tag_to_ssml(match):
+            sec = match.group(1)
+            ms = int(float(sec) * 1000)
+            return f'</prosody><break time="{ms}ms" /><prosody rate="{rate_str}">'
+        
+        # Calculate Speed Prosody
+        rate_val = int((float(speed) - 1.0) * 100)
+        rate_str = f"{rate_val:+d}%"
+
+        # Apply the tags
+        processed_text = re.sub(r'&lt;#(.*?)#&gt;', tag_to_ssml, safe_text)
+
+        # 3. BUILD FULL SSML
+        ssml = f"""<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="{voice}">
+                <prosody rate="{rate_str}">
+                    {processed_text}
+                </prosody>
+            </voice>
+        </speak>"""
+
+        fname = f"{uuid.uuid4()}.mp3"
+        fpath = os.path.join(STATIC_AUDIO, fname)
+        
+        # 4. GENERATE
         communicate = edge_tts.Communicate(ssml)
         await communicate.save(fpath)
+        
         return jsonify({"url": f"/static/audio/{fname}"})
+
     except Exception as e:
+        print(f"CRITICAL ERROR: {str(e)}") # This shows in Render Logs
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
