@@ -3,191 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HRMantra AI Voice Studio</title>
+    <title>HRMantra AI Voice Studio | Lets Lead</title>
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <style>
-        :root { --primary: #003366; --accent: #00aaff; --bg: #f0f2f5; }
-        body { background-color: var(--bg); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; }
-        .main-container { height: 100vh; display: flex; flex-direction: column; }
-        .navbar { background: white; border-bottom: 2px solid #e1e4e8; padding: 10px 30px; }
-        .logo { height: 40px; }
-        
-        .workspace { flex: 1; display: flex; padding: 20px; gap: 20px; overflow: hidden; }
-        .editor-side { flex: 2; background: white; border-radius: 15px; display: flex; flex-direction: column; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .config-side { flex: 1; background: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow-y: auto; }
-        
-        #textInput { flex: 1; border: 1px solid #ddd; border-radius: 10px; padding: 15px; font-size: 1.1rem; resize: none; margin-bottom: 15px; }
-        #textInput:focus { outline: none; border-color: var(--accent); }
+        :root {
+            --hrm-blue: #003366;
+            --hrm-accent: #00aaff;
+            --bg-gray: #f4f7fa;
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
 
-        .timeline { margin: 20px 0; display: none; }
-        .step-pill { padding: 5px 15px; border-radius: 20px; background: #eee; font-size: 0.8rem; transition: 0.3s; }
-        .step-active { background: var(--primary); color: white; }
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-gray);
+            overflow: hidden; /* Prevents double scrollbars */
+        }
 
-        .form-label { font-weight: 700; color: var(--primary); margin-top: 15px; display: block; }
-        .btn-generate { background: var(--primary); color: white; font-weight: bold; width: 100%; padding: 12px; border-radius: 8px; border: none; margin-top: 20px; }
-        .btn-generate:hover { background: #002244; }
+        /* Navbar Styling */
+        .navbar {
+            background: white;
+            border-bottom: 2px solid #e1e5eb;
+            padding: 10px 30px;
+            height: 70px;
+            z-index: 1000;
+        }
 
-        .download-box { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; display: none; }
-        .format-badge { cursor: pointer; border: 1px solid var(--primary); padding: 5px 10px; border-radius: 5px; margin-right: 5px; text-decoration: none; font-size: 0.9rem; }
+        .navbar-brand img {
+            height: 45px;
+        }
+
+        .nav-title {
+            color: var(--hrm-blue);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 70px);
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* Editor Section (Left) */
+        .editor-section {
+            flex: 2;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .section-header {
+            font-weight: 700;
+            color: var(--hrm-blue);
+            margin-bottom: 15px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #textInput {
+            flex: 1;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            resize: none;
+            color: #333;
+            background-color: #fff;
+            transition: border-color 0.2s;
+        }
+
+        #textInput:focus {
+            outline: none;
+            border-color: var(--hrm-accent);
+            box-shadow: 0 0 0 3px rgba(0, 170, 255, 0.1);
+        }
+
+        /* Settings Section (Right) */
+        .settings-section {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            overflow-y: auto;
+            max-width: 450px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--hrm-blue);
+            font-size: 0.9rem;
+            margin-top: 15px;
+        }
+
+        /* Gap Button Styling */
+        .gap-btn {
+            border: 1px solid var(--hrm-blue);
+            color: var(--hrm-blue);
+            background: transparent;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .gap-btn:hover {
+            background-color: var(--hrm-blue);
+            color: white;
+        }
+
+        /* Progress Timeline */
+        .timeline {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .step-pill {
+            font-size: 0.75rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .step-active {
+            background: var(--hrm-blue);
+            color: white;
+        }
+
+        /* Action Buttons */
+        .btn-generate {
+            background: var(--hrm-blue);
+            color: white;
+            font-weight: 700;
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-generate:hover {
+            background: #002244;
+        }
+
+        .btn-generate:disabled {
+            background: #ccc;
+        }
+
+        /* Result Area */
+        .result-area {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #eee;
+            display: none;
+        }
+
+        .download-link {
+            text-decoration: none;
+            color: var(--hrm-blue);
+            border: 1px solid var(--hrm-blue);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .download-link:hover {
+            background: var(--hrm-blue);
+            color: white;
+        }
     </style>
 </head>
 <body>
 
+<!-- Navigation Bar -->
 <nav class="navbar d-flex justify-content-between align-items-center">
-    <img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" alt="HRMantra" class="logo">
-    <span class="fw-bold text-muted">AI Voice Generation Console</span>
+    <a class="navbar-brand" href="#">
+        <img src="https://hrmantra.com/assets/images/hrmantralogosvg.svg" alt="HRMantra">
+    </a>
+    <p class="nav-title">AI Voice Generation Console</p>
 </nav>
 
 <div class="main-container">
-    <div class="workspace">
-        <!-- Editor Side -->
-        <div class="editor-side">
-            <label class="form-label">Script Console</label>
-            <textarea id="textInput" placeholder="Enter your text here... Tip: Press Enter to create segments for the delay feature."></textarea>
-            
-            <div id="timeline" class="timeline">
-                <div class="progress mb-3" style="height: 10px;">
-                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="step-pill" id="s1">Connecting</span>
-                    <span class="step-pill" id="s2">Synthesizing</span>
-                    <span class="step-pill" id="s3">Converting</span>
-                    <span class="step-pill" id="s4">Done</span>
-                </div>
+    
+    <!-- Left Panel: Script Console -->
+    <div class="editor-section">
+        <div class="section-header">
+            <span>Script Console</span>
+        </div>
+        <textarea id="textInput" placeholder="Enter your text here... Click gap buttons on the right to insert pause tags into your script."></textarea>
+        
+        <!-- Timeline UI -->
+        <div id="timelineArea" class="timeline">
+            <div class="progress mb-2" style="height: 8px;">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%; background-color: var(--hrm-blue);"></div>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="step-pill" id="step1">Connecting</span>
+                <span class="step-pill" id="step2">Synthesizing</span>
+                <span class="step-pill" id="step3">Formatting</span>
+                <span class="step-pill" id="step4">Complete</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel: Settings -->
+    <div class="settings-section">
+        
+        <label class="form-label">1. Choose Country</label>
+        <select id="countrySelect" class="form-select" onchange="loadVoices()">
+            <option value="">Select Country</option>
+            {% for country in voice_map.keys()|sort %}
+            <option value="{{ country }}">{{ country }}</option>
+            {% endfor %}
+        </select>
+
+        <label class="form-label">2. Select Voice</label>
+        <select id="voiceSelect" class="form-select" disabled>
+            <option value="">Choose Country first...</option>
+        </select>
+
+        <label class="form-label">3. Insert Pause Gap Tags</label>
+        <div class="d-flex flex-wrap gap-2 mb-2">
+            <button type="button" class="btn gap-btn btn-sm" onclick="insertGapTag('0.5s')">+ [GAP: 0.5s]</button>
+            <button type="button" class="btn gap-btn btn-sm" onclick="insertGapTag('1s')">+ [GAP: 1s]</button>
+            <button type="button" class="btn gap-btn btn-sm" onclick="insertGapTag('2s')">+ [GAP: 2s]</button>
+            <button type="button" class="btn gap-btn btn-sm" onclick="insertGapTag('5s')">+ [GAP: 5s]</button>
+        </div>
+        <div class="input-group">
+            <input type="number" id="customGapVal" class="form-control form-control-sm" placeholder="Custom (sec)">
+            <button class="btn btn-outline-primary btn-sm" onclick="addCustomGap()">+ Add Custom</button>
+        </div>
+        <small class="text-muted mt-1 d-block">Inserts a pause tag at cursor position.</small>
+
+        <label class="form-label">4. Export Formats</label>
+        <div class="d-flex gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="mp3" checked disabled>
+                <label class="form-check-label">MP3</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="wav" id="wavCheck">
+                <label class="form-check-label">WAV</label>
             </div>
         </div>
 
-        <!-- Configuration Side -->
-        <div class="config-side">
-            <label class="form-label">1. Choose Country</label>
-            <select id="countrySelect" class="form-select form-select-lg" onchange="updateVoices()">
-                <option value="">Select Country</option>
-                {% for country in voice_map.keys()|sort %}
-                <option value="{{ country }}">{{ country }}</option>
-                {% endfor %}
-            </select>
+        <button class="btn-generate" id="generateBtn" onclick="startGeneration()">GENERATE AUDIO</button>
 
-            <label class="form-label">2. Select Voice</label>
-            <select id="voiceSelect" class="form-select" disabled>
-                <option value="">Choose Country first...</option>
-            </select>
-
-            <label class="form-label">3. Custom Time Gap (Seconds)</label>
-            <div class="input-group">
-                <input type="number" id="delayInput" class="form-control" value="0.5" step="0.1" min="0">
-                <span class="input-group-text">sec</span>
-            </div>
-            <small class="text-muted">Adds a pause between paragraphs.</small>
-
-            <label class="form-label">4. Export Formats</label>
-            <div class="d-flex gap-2 mt-2">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="mp3" checked disabled>
-                    <label class="form-check-label">MP3</label>
-                </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="wavCheck" value="wav">
-                    <label class="form-check-label">WAV</label>
-                </div>
-            </div>
-
-            <button class="btn-generate" id="genBtn" onclick="processAudio()">GENERATE AUDIO</button>
-
-            <div id="downloadBox" class="download-box">
-                <h6 class="mb-3">Downloads:</h6>
-                <div id="downloadLinks"></div>
-                <audio id="player" controls class="w-100 mt-3"></audio>
-            </div>
+        <!-- Output Result Area -->
+        <div id="resultArea" class="result-area">
+            <h6 class="fw-bold mb-3" style="color: var(--hrm-blue);">✓ Output Generated Successfully</h6>
+            <audio id="audioPlayer" controls class="w-100 mb-3"></audio>
+            <div id="downloadLinks" class="d-flex flex-wrap gap-2"></div>
         </div>
     </div>
 </div>
 
+<!-- JS Logic -->
 <script>
-const voiceMap = {{ voice_map | tojson }};
+    const voiceData = {{ voice_map | tojson }};
 
-function updateVoices() {
-    const country = document.getElementById('countrySelect').value;
-    const vSelect = document.getElementById('voiceSelect');
-    vSelect.innerHTML = '<option value="">Choose a voice...</option>';
-    
-    if (country && voiceMap[country]) {
-        vSelect.disabled = false;
-        voiceMap[country].forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v.id;
-            opt.textContent = v.label;
-            vSelect.appendChild(opt);
-        });
-    } else {
-        vSelect.disabled = true;
-    }
-}
-
-async function processAudio() {
-    const text = document.getElementById('textInput').value;
-    const voice = document.getElementById('voiceSelect').value;
-    const delay = document.getElementById('delayInput').value;
-    const formats = ['mp3'];
-    if(document.getElementById('wavCheck').checked) formats.push('wav');
-
-    if(!text || !voice) return alert("Select Voice and Enter Text");
-
-    // UI Reset
-    document.getElementById('timeline').style.display = 'block';
-    document.getElementById('downloadBox').style.display = 'none';
-    document.getElementById('genBtn').disabled = true;
-    
-    // Animate Timeline
-    updateStep(1, 25);
-    
-    try {
-        const res = await fetch('/generate', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ text, voice, delay, formats })
-        });
-        const data = await res.json();
+    // Load voices based on country selection
+    function loadVoices() {
+        const country = document.getElementById('countrySelect').value;
+        const vSelect = document.getElementById('voiceSelect');
+        vSelect.innerHTML = '<option value="">Choose a voice...</option>';
         
-        updateStep(2, 60);
-        setTimeout(() => updateStep(3, 85), 500);
-        
-        if(data.urls) {
-            setTimeout(() => {
-                updateStep(4, 100);
-                showDownloads(data.urls);
-                document.getElementById('genBtn').disabled = false;
-            }, 1000);
+        if (country && voiceData[country]) {
+            vSelect.disabled = false;
+            voiceData[country].forEach(voice => {
+                const opt = document.createElement('option');
+                opt.value = voice.id;
+                opt.textContent = voice.label;
+                vSelect.appendChild(opt);
+            });
+        } else {
+            vSelect.disabled = true;
         }
-    } catch(e) {
-        alert("Error processing request.");
-        document.getElementById('genBtn').disabled = false;
     }
-}
 
-function updateStep(stepNum, percent) {
-    document.getElementById('progressBar').style.width = percent + '%';
-    for(let i=1; i<=4; i++) {
-        document.getElementById('s'+i).classList.remove('step-active');
+    // IMPORTANT: The Cursor Position Injection Logic
+    function insertGapTag(duration) {
+        const textarea = document.getElementById('textInput');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const tag = ` [GAP: ${duration}] `;
+
+        // Construct new text
+        const currentText = textarea.value;
+        textarea.value = currentText.substring(0, start) + tag + currentText.substring(end);
+
+        // Move cursor focus and position to AFTER the tag
+        const newPos = start + tag.length;
+        textarea.focus();
+        textarea.setSelectionRange(newPos, newPos);
     }
-    document.getElementById('s'+stepNum).classList.add('step-active');
-}
 
-function showDownloads(urls) {
-    const container = document.getElementById('downloadLinks');
-    container.innerHTML = '';
-    document.getElementById('downloadBox').style.display = 'block';
-    document.getElementById('player').src = urls.mp3;
-
-    for (const [format, url] of Object.entries(urls)) {
-        const a = document.createElement('a');
-        a.href = url;
-        a.className = 'format-badge';
-        a.download = `voice_output.${format}`;
-        a.textContent = `Download .${format.toUpperCase()}`;
-        container.appendChild(a);
+    function addCustomGap() {
+        const val = document.getElementById('customGapVal').value;
+        if (val && val > 0) {
+            insertGapTag(val + 's');
+            document.getElementById('customGapVal').value = '';
+        } else {
+            alert("Enter a valid number for seconds.");
+        }
     }
-}
+
+    // Process audio via API
+    async function startGeneration() {
+        const text = document.getElementById('textInput').value;
+        const voice = document.getElementById('voiceSelect').value;
+        const btn = document.getElementById('generateBtn');
+        const formats = ['mp3'];
+        if(document.getElementById('wavCheck').checked) formats.push('wav');
+
+        if (!text || !voice) {
+            alert("Please provide both text and a voice selection.");
+            return;
+        }
+
+        // Show Timeline and disable button
+        btn.disabled = true;
+        document.getElementById('timelineArea').style.display = 'block';
+        document.getElementById('resultArea').style.display = 'none';
+        updateTimeline(1, 20);
+
+        try {
+            updateTimeline(2, 50);
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, voice, formats })
+            });
+            const data = await response.json();
+
+            if (data.urls) {
+                updateTimeline(3, 85);
+                setTimeout(() => {
+                    updateTimeline(4, 100);
+                    displayResult(data.urls);
+                    btn.disabled = false;
+                }, 800);
+            } else {
+                throw new Error("Generation failed");
+            }
+        } catch (err) {
+            alert("Error generating audio. Check console.");
+            btn.disabled = false;
+        }
+    }
+
+    function updateTimeline(step, percent) {
+        document.getElementById('progressBar').style.width = percent + '%';
+        for (let i = 1; i <= 4; i++) {
+            document.getElementById('step' + i).classList.remove('step-active');
+        }
+        document.getElementById('step' + step).classList.add('step-active');
+    }
+
+    function displayResult(urls) {
+        const resultArea = document.getElementById('resultArea');
+        const downloadLinks = document.getElementById('downloadLinks');
+        const player = document.getElementById('audioPlayer');
+
+        resultArea.style.display = 'block';
+        downloadLinks.innerHTML = '';
+        player.src = urls.mp3;
+
+        for (const [format, url] of Object.entries(urls)) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.className = 'download-link';
+            a.download = `HRMantra_Audio.${format}`;
+            a.innerHTML = `Download .${format.toUpperCase()}`;
+            downloadLinks.appendChild(a);
+        }
+    }
 </script>
+
 </body>
 </html>
