@@ -344,7 +344,7 @@ def parse_segments(text: str):
 
 
 def split_text_into_chunks(text: str, max_chunk_size: int = 1200):
-    """Splits text into sub-chunks on sentence boundaries for ultra-fast processing."""
+    """Splits text into sub-chunks on sentence boundaries for fast processing."""
     if len(text) <= max_chunk_size:
         return [text]
 
@@ -394,21 +394,22 @@ async def text_chunk_to_pcm(text: str, voice: str, rate: str) -> bytes:
 
 
 async def text_to_pcm(text: str, voice: str, rate: str) -> bytes:
-    """Processes large texts via concurrent parallel requests for instant speed."""
+    """Processes chunks with controlled concurrency to prevent cloud IP blocks."""
     chunks = split_text_into_chunks(text, max_chunk_size=1200)
+    sem = asyncio.Semaphore(2)
 
     async def fetch_chunk(chunk):
         if not chunk.strip():
             return b""
-        for attempt in range(3):
-            try:
-                return await text_chunk_to_pcm(chunk, voice, rate)
-            except Exception as e:
-                if attempt == 2:
-                    raise e
-                await asyncio.sleep(0.5)
+        async with sem:
+            for attempt in range(3):
+                try:
+                    return await text_chunk_to_pcm(chunk, voice, rate)
+                except Exception as e:
+                    if attempt == 2:
+                        raise e
+                    await asyncio.sleep(1.0)
 
-    # Run chunk generation concurrently in parallel!
     tasks = [fetch_chunk(c) for c in chunks]
     pcm_chunks = await asyncio.gather(*tasks)
     return b"".join(pcm_chunks)
